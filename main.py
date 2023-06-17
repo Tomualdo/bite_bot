@@ -34,8 +34,14 @@ class BraveBot(webdriver.Chrome):
         options.add_experimental_option("detach", True)  # DO NOT CLOSE THE BROWSER WINDOW AT THE END
         # options.headless = True
         # options.add_argument('--headless')
-        # binary_location = Path('C:/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe')
-        binary_location = Path('/usr/bin/brave-browser')
+        binary_locations = [
+            Path('C:/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe'),
+            Path('/usr/bin/brave-browser'),
+            Path('/usr/bin/brave'),
+        ]
+        for bin in binary_locations:
+            if bin.exists():
+                binary_location = bin
         options.binary_location = str(binary_location)
         # driver_path = Path("C:/Users/Tom/Downloads/chromedriver_win32/chromedriver.exe")
         driver_path = Path("/home/tom/Downloads/chromedriver_linux64_113")
