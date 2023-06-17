@@ -2,7 +2,7 @@ cred.py
 logs
 .idea
 __pycache__
-LICENSE
+LICENSE*
 chromedriver*
 env
 
