@@ -26,6 +26,7 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.t_delta = None
         options = Options()
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--no-sandbox")
@@ -129,6 +130,7 @@ class BraveBot(webdriver.Chrome):
             self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             _target.click()
             log.info(self.find_elements(By.XPATH, f"//p")[-1].text)
+        return True
 
 
     def select_hunt(self):
@@ -363,7 +365,8 @@ def main():
                     log.info(f"going grave {ap[0]:} {energy[0]:}")
                     bot.go_grave()
                     sleep(30*60+1)
-                bot.go_hunt()
+                if not bot.go_hunt():
+                    sleep(bot.t_delta.seconds)
                 bot.stats_increase()
                 ap = bot.get_ap()
                 energy = bot.get_energy()
