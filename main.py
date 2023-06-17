@@ -344,7 +344,18 @@ def main():
         bot = BraveBot()
         bot.get_main_page()
         bot.login()
-        log.info(bot.get_gold())
+        gold = bot.get_gold()
+        ap = bot.get_ap()
+        energy = bot.get_energy()
+        while True:
+            if ap[0] == 0 or (energy[0] / energy[1]) < 0.09:
+                log(f"going grave {ap[0]:} {energy[0]:}")
+                bot.go_grave()
+                sleep(30*60+1)
+            bot.go_hunt()
+            bot.stats_increase()
+
+
 
 
 if __name__ == '__main__':
