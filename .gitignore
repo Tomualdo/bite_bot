@@ -2,3 +2,7 @@ cred.py
 logs
 .idea
 __pycache__
+LICENSE
+chromedriver*
+env
+
