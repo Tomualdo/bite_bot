@@ -244,7 +244,7 @@ class BraveBot(webdriver.Chrome):
         if "profile/index" not in self.current_url:
             self.get_main_page()
         gold = self.find_element(By.XPATH, "//*[@id='infobar']").text
-        gold = re.search('.*\n(\d+\.\d+) .*', gold).group(1).replace('.', '')
+        gold = re.search('.*\n([\d\.]+) .*', gold).group(1).replace('.', '')
         return int(gold)
 
     def do_adventure(self):
