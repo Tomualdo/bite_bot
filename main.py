@@ -214,6 +214,10 @@ class BraveBot(webdriver.Chrome):
                 break
 
     def stats_increase(self, st=None, r=1):
+
+        # get values
+        """//*[@id="skills_tab"]/div[2]/div/div/table/tbody/tr[3]/td[2]/div[2]/table/tbody/tr[5]/td[2]"""
+
         for repeat in range(r):
             if "profile/index" not in self.current_url:
                 self.get_main_page()
@@ -361,6 +365,8 @@ def main():
                     sleep(30*60+1)
                 bot.go_hunt()
                 bot.stats_increase()
+                ap = bot.get_ap()
+                energy = bot.get_energy()
                 log.info(bot.get_gold())
             except Exception as e:
                 log.error(f"{e}")
