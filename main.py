@@ -23,6 +23,7 @@ class BraveBot(webdriver.Chrome):
     URL = "https://s23-sk.bitefight.gameforge.com/profile"
     USER = cred.USER
     PWD = cred.PWD
+    players = {}
 
     def __init__(self):
         options = Options()
@@ -256,6 +257,46 @@ class BraveBot(webdriver.Chrome):
                 continue
             log.info(f"{ss} {rnd.text}")
             rnd.click()
+
+    def get_players(self):
+        if self.players:
+            self.players = {}
+        self.find_element(By.LINK_TEXT, "Highscore").click()
+        def _get_players_data():
+            tbod = self.find_element(By.XPATH, "//*[@id='highscore']")
+            tr = [tr.text for tr in tbod.find_elements(By.CSS_SELECTOR, "tr")]
+            race = [tr.get_attribute('outerHTML') for tr in tbod.find_elements(By.XPATH, "//tr/td/img")]
+            race = [True if 'Vlkolakov' in r else False for r in race]
+
+            # filter out only players
+            idx = 0
+            for record in tr:
+                r = re.search('(\d+) (.*) (\d+) ([\d+\.]{0,}) ([\d+\.]{0,})', record)
+                if r:
+                    name = re.sub(' \[.*\]', '', r.group(2))
+                    self.players[name] = [
+                        int(r.group(1)),
+                        int(r.group(3)),
+                        int(r.group(4).replace('.', '')),
+                        int(r.group(5).replace('.', '')),
+                        race[idx]
+                    ]
+                    idx += 1
+
+        # pages = self.find_elements(By.XPATH, "//a[contains(@href, number())]")
+        end = False
+        _get_players_data() # from the 1st page
+        while not end:
+            page = self.find_elements(By.XPATH, "//center/a/img[contains(@href, fightvalue)]")
+            for p in page:
+                if p.accessible_name == '+1' or p.accessible_name == 'do konca':
+                    p.click()
+                    _get_players_data()
+                    break
+                if page[-1].accessible_name == '-1':  # we are at the end
+                    log.info("end of highscore list")
+                    end = True
+                    break
 
 
 #----------------------------------------------------------------------------------------------------------
