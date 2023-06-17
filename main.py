@@ -65,6 +65,7 @@ class BraveBot(webdriver.Chrome):
         self.get(URL)
 
     def login(self):
+        log.info(f"Login...")
         usr = self.find_element(By.NAME, "user")
         usr.send_keys(self.USER)
         usr = self.find_element(By.NAME, "pass")
@@ -348,12 +349,21 @@ def main():
         ap = bot.get_ap()
         energy = bot.get_energy()
         while True:
-            if ap[0] == 0 or (energy[0] / energy[1]) < 0.09:
-                log(f"going grave {ap[0]:} {energy[0]:}")
-                bot.go_grave()
-                sleep(30*60+1)
-            bot.go_hunt()
-            bot.stats_increase()
+            try:
+                if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
+                    bot.get_main_page()
+                    bot.login()
+                    ap = bot.get_ap()
+                    energy = bot.get_energy()
+                if ap[0] == 0 or (energy[0] / energy[1]) < 0.09:
+                    log.info(f"going grave {ap[0]:} {energy[0]:}")
+                    bot.go_grave()
+                    sleep(30*60+1)
+                bot.go_hunt()
+                bot.stats_increase()
+                log.info(bot.get_gold())
+            except Exception as e:
+                log.error(f"{e}")
 
 
 
