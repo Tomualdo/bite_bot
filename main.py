@@ -142,7 +142,7 @@ class BraveBot(webdriver.Chrome):
         return self.check_if_work_in_progress()
 
     def check_if_work_in_progress(self):
-        self.get(self.URL + "/robbery")
+        self.get(self.URL + "/city/graveyard")
         if 'working' in self.current_url:
             # log.info(f"Work in progress...")
             log.info(f"Work in progress...")
@@ -154,9 +154,7 @@ class BraveBot(webdriver.Chrome):
         return False
 
     def go_grave(self, w='0:30'):
-        self.find_element(By.LINK_TEXT, "Mesto").click()
-        self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        self.find_element(By.LINK_TEXT, "Cintorín").click()
+        self.get(self.URL + "/city/graveyard")
         if not self.check_if_work_in_progress():
             work_time = self.find_element(By.XPATH, "//select[contains(@name,'workDuration')]")
             work_time.send_keys(w)
