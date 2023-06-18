@@ -252,6 +252,15 @@ class BraveBot(webdriver.Chrome):
         self.ap = list(map(int, ap))
         return list(map(int, ap))
 
+    def get_level(self):
+        #(r'\((\d+\.?\d+) / (\d+\.?\d+)\)')
+        if "profile/index" not in self.current_url:
+            self.get_main_page()
+        level = self.find_element(By.XPATH, "//*[@id='infobar']")
+        level = re.search('  (\d+)    (\d+$)', level.text)
+        self.level = int(level.group(1))
+        self.attack = int(level.group(2))
+
     def get_gold(self):
         if "profile/index" not in self.current_url:
             self.get_main_page()
@@ -349,6 +358,30 @@ class BraveBot(webdriver.Chrome):
                     end = True
                     break
 
+    def get_player_info(self):
+        self.get_energy()
+        self.get_level()
+        self.get_ap()
+        self.get_gold()
+
+    def shop_item(self):
+        item_pages = [
+            "/city/shop/weapons/",
+            "/city/shop/potions/",
+            "/city/shop/helmets/",
+            "/city/shop/armor/",
+            "/city/shop/stuff/",
+            "/city/shop/gloves/",
+            "/city/shop/shoes/",
+            "/city/shop/shields/"
+        ]
+        for item_page in item_pages:
+            self.get(self.URL + item_page)
+
+            shop = self.find_element(By.ID, "shopOverview")
+            shop_items = shop.find_elements(By.TAG_NAME, 'tr')
+
+
 
 #----------------------------------------------------------------------------------------------------------
 
@@ -389,19 +422,17 @@ def main():
         bot = BraveBot()
         bot.get_main_page()
         bot.login()
-        gold = bot.get_gold()
-        ap = bot.get_ap()
-        energy = bot.get_energy()
+        bot.get_player_info()
         while True:
             try:
-                log.info(f" gold: {bot.get_gold()} energy: {bot.energy:}  ap: {bot.ap:}")
+                log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:}")
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
                     bot.login()
-                    ap = bot.get_ap()
-                    energy = bot.get_energy()
-                if ap[0] == 0 or (energy[0] / energy[1]) < 0.09:
-                    log.info(f"going grave {ap[0]:} {energy[0]:}")
+                    bot.get_player_info()
+
+                if bot.ap[0] == 0 or bot.energy < 0.09:
+                    log.info(f"going grave {bot.ap[0]:} {bot.energy:}")
                     bot.go_grave(w="1:30")
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
@@ -416,8 +447,6 @@ def main():
                         sleep(bot.t_delta.seconds)
                     bot.stats_increase()
 
-                ap = bot.get_ap()
-                energy = bot.get_energy()
             except Exception as e:
                 log.error(f"{e}")
 
