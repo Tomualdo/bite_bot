@@ -410,7 +410,8 @@ def main():
                     bot.stats_increase()
 
                 if bot.ap[0] >=1:
-                    bot.go_hunt()
+                    if not bot.go_hunt():
+                        sleep(bot.t_delta.seconds)
                     bot.stats_increase()
 
                 ap = bot.get_ap()
