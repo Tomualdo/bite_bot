@@ -20,12 +20,15 @@ import cred
 log = my_logger.log('main')
 
 class BraveBot(webdriver.Chrome):
-    URL = "https://s23-sk.bitefight.gameforge.com/profile"
+    URL = "https://s23-sk.bitefight.gameforge.com"
     USER = cred.USER
     PWD = cred.PWD
     players = {}
 
     def __init__(self):
+        self.gold = None
+        self.ap = None
+        self.energy = None
         self.t_delta = None
         options = Options()
         options.add_argument("--disable-blink-features=AutomationControlled")
@@ -63,7 +66,7 @@ class BraveBot(webdriver.Chrome):
     def get_main_page(self, URL=None):
         if not URL:
             URL = self.URL
-        self.get(URL)
+        self.get(URL + "/profile")
 
     def login(self):
         log.info(f"Login...")
@@ -114,14 +117,15 @@ class BraveBot(webdriver.Chrome):
             output = regex.match(schopnosti[1].text)
             energy = list(map(int, [heal.replace('.', '') for heal in output.groups()]))
             log.info(f"{energy}")
+            self.energy = energy[0] / energy[1]
             return energy
 
     def go_hunt(self, target='Farma', r=1):
-        self.find_element(By.LINK_TEXT, "Lov").click()
+        self.get(self.URL + "/robbery")
         if self.check_if_work_in_progress():
             return False
         for repeat in range(r):
-            self.find_element(By.LINK_TEXT, "Lov").click()
+            self.get(self.URL + "/robbery")
             # if "profile/index" not in self.current_url:
             #     self.get_main_page()
             # target = self.find_element(By.XPATH, ".//*[@id='humanHunting']//button[contains(.,'Farma')]")
@@ -129,15 +133,16 @@ class BraveBot(webdriver.Chrome):
             # target = self.find_element(By.XPATH, ".//*[@id='humanHunting']//button[contains(.,'Dedina')]")
             self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             _target.click()
-            log.info(self.find_elements(By.XPATH, f"//p")[-1].text)
+            log.info(self.find_elements(By.XPATH, f"//p")[-2].text)
         return True
 
 
     def select_hunt(self):
-        self.find_element(By.LINK_TEXT, "Lov").click()
+        self.get(self.URL + "/robbery")
         return self.check_if_work_in_progress()
 
     def check_if_work_in_progress(self):
+        self.get(self.URL + "/robbery")
         if 'working' in self.current_url:
             # log.info(f"Work in progress...")
             log.info(f"Work in progress...")
@@ -145,6 +150,7 @@ class BraveBot(webdriver.Chrome):
             # log.info(f"Remaining time {self.t_delta}")
             log.info(f"Remaining time {self.t_delta}")
             return True
+        log.info(f"No work")
         return False
 
     def go_grave(self, w='0:30'):
@@ -158,15 +164,11 @@ class BraveBot(webdriver.Chrome):
             return True
 
     def go_daemons(self, r=1, level=None):
-        self.find_element(By.LINK_TEXT, "Mesto").click()
-        self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        self.find_element(By.LINK_TEXT, "Jaskyňa").click()
+        self.get(self.URL + "/city/grotte")
         if self.check_if_work_in_progress():
             return False
         for repeat in range(r):
-            self.find_element(By.LINK_TEXT, "Mesto").click()
-            self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            self.find_element(By.LINK_TEXT, "Jaskyňa").click()
+            self.get(self.URL + "/city/grotte")
             if level is None or level == 1:
                 self.find_element(By.XPATH, "//input[contains(@value,'Ľahký')]").click()
             if level == 2:
@@ -191,11 +193,11 @@ class BraveBot(webdriver.Chrome):
                     log.info(f'increase level to {level}')
 
     def go_attack(self, r=1):
-        self.find_element(By.LINK_TEXT, "Lov").click()
+        self.get(self.URL + "/robbery")
         if self.check_if_work_in_progress():
             return False
         for repeat in range(r):
-            self.find_element(By.LINK_TEXT, "Lov").click()
+            self.get(self.URL + "/robbery")
             health = self.get_energy()
             if health[0] / health[1] > 0.20:
                 self.select_hunt()
@@ -229,9 +231,11 @@ class BraveBot(webdriver.Chrome):
                     stats = self.find_elements(By.XPATH, "//img[contains(@src,'iconplus')]")
                     if st and 'inactiv' not in stats[st].get_attribute('outerHTML'):
                         stats[st].click()
+                        log.info(f"increase stats {idx}")
                         break
                     elif not st and 'inactiv' not in stats[idx].get_attribute('outerHTML'):
                         stats[idx].click()
+                        log.info(f"increase stats {idx}")
                     else:
                         log.info("no more gold")
                         break
@@ -245,6 +249,7 @@ class BraveBot(webdriver.Chrome):
             self.get_main_page()
         ap = self.find_elements(By.XPATH, "//*[@id='infobar']")
         ap = re.search('.* (\d+ \/ \d+).*', ap[0].text).group(1).split(' / ')
+        self.ap = list(map(int, ap))
         return list(map(int, ap))
 
     def get_gold(self):
@@ -252,9 +257,29 @@ class BraveBot(webdriver.Chrome):
             self.get_main_page()
         gold = self.find_element(By.XPATH, "//*[@id='infobar']").text
         gold = re.search('.*\n([\d\.]+) .*', gold).group(1).replace('.', '')
+        self.gold = int(gold)
         return int(gold)
 
-    def do_adventure(self):
+    def do_adventure(self, min_energy=0.35):
+        self.get_energy()
+
+        self.get(self.URL + "/city/adventure")
+        if self.check_if_work_in_progress():
+            return
+
+        if self.energy <= min_energy:
+            if 'Pokračovať (3 AB)' in self.page_source:
+                log.info(f"low energy {self.energy} we have to end adventure")
+                self.get(self.URL + "/city/adventure/decision/36")
+                self.get(self.URL + "/city/adventure")
+
+        if 'Dobrodružstvo končí' not in self.page_source:
+            self.get(self.URL + "/city/adventure/startquest")
+
+        if 'Pokračovať (3 AB)' in self.page_source :
+            self.get(self.URL + "/city/adventure/decision/35")
+            self.get(self.URL + "/city/adventure")
+
         import random
         ss = True
         while ss:
@@ -270,6 +295,19 @@ class BraveBot(webdriver.Chrome):
                 continue
             log.info(f"{ss} {rnd.text}")
             rnd.click()
+
+        # check at the end if we have enough energy otherwise quit
+        self.get_energy()
+        self.get_ap()
+        self.get(self.URL + "/city/adventure")
+        if self.check_if_work_in_progress():
+            return
+
+        if self.energy <= min_energy:
+            if 'Pokračovať (3 AB)' in self.page_source:
+                log.info(f"low energy {self.energy} we have to end adventure")
+                self.get(self.URL + "/city/adventure/decision/36")
+                self.get(self.URL + "/city/adventure")
 
     def get_players(self):
         if self.players:
@@ -364,13 +402,21 @@ def main():
                 if ap[0] == 0 or (energy[0] / energy[1]) < 0.09:
                     log.info(f"going grave {ap[0]:} {energy[0]:}")
                     bot.go_grave()
-                    sleep(30*60+1)
+                    log.info(f"working for {bot.t_delta.seconds} seconds")
+                    sleep(bot.t_delta.seconds)
+
+                # ----------
+                while bot.ap[0] >= 3 and bot.energy > 0.35:
+                    bot.do_adventure()
+                    bot.stats_increase()
+
                 if not bot.go_hunt():
                     sleep(bot.t_delta.seconds)
-                bot.stats_increase()
+
+
                 ap = bot.get_ap()
                 energy = bot.get_energy()
-                log.info(bot.get_gold())
+                log.info(f" gold: {bot.get_gold()}")
             except Exception as e:
                 log.error(f"{e}")
 
