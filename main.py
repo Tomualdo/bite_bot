@@ -226,7 +226,8 @@ class BraveBot(webdriver.Chrome):
                 self.get_main_page()
             self.find_element(By.LINK_TEXT, "Schopnosti").click()
             try:
-                for idx in range(4):
+                number_of_stats = 4 # we do not need 5 -> charisma is not necessary
+                for idx in range(number_of_stats):
                     stats = self.find_elements(By.XPATH, "//img[contains(@src,'iconplus')]")
                     if st and 'inactiv' not in stats[st].get_attribute('outerHTML'):
                         stats[st].click()
@@ -235,9 +236,9 @@ class BraveBot(webdriver.Chrome):
                     elif not st and 'inactiv' not in stats[idx].get_attribute('outerHTML'):
                         stats[idx].click()
                         log.info(f"increase stats {idx}")
-                    else:
+                    elif idx == number_of_stats-1 and not st and 'inactiv' in stats[idx].get_attribute('outerHTML'):
                         log.info("no more gold")
-                        break
+
             except IndexError:
                 log.info("no more gold")
                 break
