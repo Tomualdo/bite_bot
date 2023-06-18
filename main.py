@@ -26,6 +26,8 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.attack = None
+        self.level = None
         self.gold = None
         self.ap = None
         self.energy = None
@@ -425,7 +427,7 @@ def main():
         bot.get_player_info()
         while True:
             try:
-                log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:}")
+                log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:} level: {bot.level} att: {bot.attack}")
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
                     bot.login()
@@ -447,6 +449,7 @@ def main():
                         sleep(bot.t_delta.seconds)
                     bot.stats_increase()
 
+                log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:} level: {bot.level} att: {bot.attack}")
             except Exception as e:
                 log.error(f"{e}")
 
