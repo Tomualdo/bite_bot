@@ -143,6 +143,7 @@ class BraveBot(webdriver.Chrome):
 
     def check_if_work_in_progress(self):
         self.get(self.URL + "/city/graveyard")
+        self.t_delta = None
         if 'working' in self.current_url:
             # log.info(f"Work in progress...")
             log.info(f"Work in progress...")
@@ -399,7 +400,7 @@ def main():
                     energy = bot.get_energy()
                 if ap[0] == 0 or (energy[0] / energy[1]) < 0.09:
                     log.info(f"going grave {ap[0]:} {energy[0]:}")
-                    bot.go_grave()
+                    bot.go_grave(w="1:30")
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
 
@@ -408,13 +409,13 @@ def main():
                     bot.do_adventure()
                     bot.stats_increase()
 
-                if not bot.go_hunt():
-                    sleep(bot.t_delta.seconds)
-
+                if bot.ap[0] >=1:
+                    bot.go_hunt()
+                    bot.stats_increase()
 
                 ap = bot.get_ap()
                 energy = bot.get_energy()
-                log.info(f" gold: {bot.get_gold()}")
+                log.info(f" gold: {bot.get_gold()} {bot.energy:} {bot.ap:}")
             except Exception as e:
                 log.error(f"{e}")
 
