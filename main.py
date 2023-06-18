@@ -394,6 +394,7 @@ def main():
         energy = bot.get_energy()
         while True:
             try:
+                log.info(f" gold: {bot.get_gold()} energy: {bot.energy:}  ap: {bot.ap:}")
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
                     bot.login()
@@ -417,7 +418,6 @@ def main():
 
                 ap = bot.get_ap()
                 energy = bot.get_energy()
-                log.info(f" gold: {bot.get_gold()} {bot.energy:} {bot.ap:}")
             except Exception as e:
                 log.error(f"{e}")
 
