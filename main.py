@@ -28,6 +28,7 @@ class BraveBot(webdriver.Chrome):
     def __init__(self):
         self.desired_items = ['Blarkim']
         self.focused_items = []
+        self.exeption_items = ['Valon']
         self.shop_item_list = None
         self.attack = None
         self.level = None
@@ -405,6 +406,8 @@ class BraveBot(webdriver.Chrome):
             for item in shop_items:
                 try:
                     item_name = re.search('^(.*)\n', item.text)
+                    if item_name.group(1) in self.exeption_items:
+                        continue
                     inventory = re.search('^.*\n.* (\d+) ', item.text)
                     price = re.search('.*Nákupná cena: ([\d\.]+)', item.text)
                     level = re.search('.*Predpoklady: úroveň (\d+)', item.text)
@@ -422,7 +425,7 @@ class BraveBot(webdriver.Chrome):
 
         for desired_item in self.desired_items:
             if desired_item in self.shop_item_list.keys() \
-                    and self.level >= self.shop_item_list[desired_item] \
+                    and self.level >= self.shop_item_list[desired_item]['level'] \
                     and self.shop_item_list[desired_item]['inventory'] == 0 \
                     and desired_item not in self.focused_items:
                 self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
