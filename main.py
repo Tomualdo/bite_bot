@@ -386,8 +386,10 @@ class BraveBot(webdriver.Chrome):
         self.shop_item_list = {}
 
         for item_page in item_pages:
+            log.info(f"Getting page {self.URL + item_page}")
             self.get(self.URL + item_page)
 
+            self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
             shop = self.find_element(By.ID, "shopOverview")
             shop_items = shop.find_elements(By.TAG_NAME, 'tr')
 
