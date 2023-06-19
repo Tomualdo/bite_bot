@@ -28,7 +28,7 @@ class BraveBot(webdriver.Chrome):
     def __init__(self):
         self.desired_items = ['Blarkim']
         self.focused_items = []
-        self.exeption_items = ['Valon']
+        self.exception_items = ['Valon']
         self.shop_item_list = None
         self.attack = None
         self.level = None
@@ -389,7 +389,6 @@ class BraveBot(webdriver.Chrome):
             log.info(f"Getting page {self.URL + item_page}")
             self.get(self.URL + item_page)
 
-            self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
             shop = self.find_element(By.ID, "shopOverview")
             shop_items = shop.find_elements(By.TAG_NAME, 'tr')
 
@@ -407,8 +406,10 @@ class BraveBot(webdriver.Chrome):
             # ---'
             for item in shop_items:
                 try:
+                    if not item.text:
+                        continue
                     item_name = re.search('^(.*)\n', item.text)
-                    if item_name.group(1) in self.exeption_items:
+                    if item_name.group(1) in self.exception_items:
                         continue
                     inventory = re.search('^.*\n.* (\d+) ', item.text)
                     price = re.search('.*Nákupná cena: ([\d\.]+)', item.text)
