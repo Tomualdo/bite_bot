@@ -494,6 +494,8 @@ def main():
         bot = BraveBot()
         bot.get_main_page()
         bot.login()
+        err_counter = 0
+        repeat_flag = False
         while True:
             try:
                 bot.get_player_info()
@@ -535,6 +537,15 @@ def main():
                          f"\nFocus list {bot.focused_items}")
             except Exception as e:
                 log.error(f"{e}")
+                err_counter += 1
+                if err_counter >=10:
+                    if repeat_flag:
+                        sleep(60)
+                    bot.get_main_page()
+                    bot.login()
+                    err_counter = 0
+                    repeat_flag = True
+
 
 
 
