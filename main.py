@@ -26,6 +26,7 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.last_shop_visit = None
         self.desired_items = ['Blarkim']
         self.focused_items = []
         self.exception_items = ['Valon']
@@ -224,10 +225,7 @@ class BraveBot(webdriver.Chrome):
                 break
 
     def stats_increase(self, st=None, r=1):
-
-        # get values
-        """//*[@id="skills_tab"]/div[2]/div/div/table/tbody/tr[3]/td[2]/div[2]/table/tbody/tr[5]/td[2]"""
-
+        log.info(f"Try to increase stats...")
         for repeat in range(r):
             if "profile/index" not in self.current_url:
                 self.get_main_page()
@@ -372,6 +370,7 @@ class BraveBot(webdriver.Chrome):
         self.get_gold()
 
     def shop_item(self):
+
         item_pages = [
             "/city/shop/weapons/",
             "/city/shop/potions/",
@@ -383,8 +382,58 @@ class BraveBot(webdriver.Chrome):
             "/city/shop/shields/"
         ]
 
-        self.shop_item_list = {}
+        # check if we need to get shop data
+        now_shop_visit = datetime.datetime.now()
 
+        if not self.last_shop_visit:
+            log.info("Getting FIRST shop data...")
+            self._get_shop_data(item_pages)
+            self.last_shop_visit = datetime.datetime.now()
+
+        if (self.last_shop_visit - now_shop_visit).seconds < 60*5:
+            log.info("skipping shop data...")
+        else:
+            log.info("Getting shop data...")
+            self._get_shop_data(item_pages)
+            self.last_shop_visit = datetime.datetime.now()
+
+
+        # -----------------------------------------------------------------------------
+        # buy desired item
+
+        for desired_item in self.desired_items:
+            if desired_item in self.shop_item_list.keys() \
+                    and self.level >= self.shop_item_list[desired_item]['level'] \
+                    and self.shop_item_list[desired_item]['inventory'] == 0 \
+                    and desired_item not in self.focused_items:
+                self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
+                log.info(f"New focused item {desired_item}")
+
+        self.get_player_info() # update player stats - mainly for gold
+        for focused_item in self.focused_items:
+            if self.gold >= self.shop_item_list[focused_item]['price']:
+                # it is SHOPPING time
+                self.get(self.URL + self.shop_item_list[focused_item]['type'])
+                shop = self.find_element(By.ID, "shopOverview")
+                shop_items = shop.find_elements(By.TAG_NAME, 'tr')
+                for item in shop_items:
+                    if focused_item in item.text:
+                        log.info(f"We buying : {item.text}")
+                        it = item.find_element(By.TAG_NAME, "a")
+                        it = it.get_attribute('href')
+                        if it:
+                            log.info(f"{it}")
+                            self.get(it)
+                            self.focused_items.remove(focused_item)
+                            log.info("Removing focused items...")
+                            log.info(f"Focused items: {self.focused_items}")
+                            # activate new item
+                            break
+                        else:
+                            log.warning(f"{focused_item} BUY Problem !")
+
+    def _get_shop_data(self, item_pages):
+        self.shop_item_list = {}
         for item_page in item_pages:
             log.info(f"Getting page {self.URL + item_page}")
             self.get(self.URL + item_page)
@@ -423,37 +472,7 @@ class BraveBot(webdriver.Chrome):
                         }
                 except AttributeError as e:
                     log.warning(f"item type {item_page} item {item.text}: {e}")
-        # -----------------------------------------------------------------------------
-        # buy desired item
 
-        for desired_item in self.desired_items:
-            if desired_item in self.shop_item_list.keys() \
-                    and self.level >= self.shop_item_list[desired_item]['level'] \
-                    and self.shop_item_list[desired_item]['inventory'] == 0 \
-                    and desired_item not in self.focused_items:
-                self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
-                log.info(f"New focused item {desired_item}")
-
-        self.get_player_info() # update player stats - mainly for gold
-        for focused_item in self.focused_items:
-            if self.gold >= self.shop_item_list[focused_item]['price']:
-                # it is SHOPPING time
-                self.get(self.URL + self.shop_item_list[focused_item]['type'])
-                shop = self.find_element(By.ID, "shopOverview")
-                shop_items = shop.find_elements(By.TAG_NAME, 'tr')
-                for item in shop_items:
-                    if focused_item in item.text:
-                        log.info(f"We buying : {item.text}")
-                        it = item.find_element(By.TAG_NAME, "a")
-                        it = it.get_attribute('href')
-                        if it:
-                            log.info(f"{it}")
-                            self.get(it)
-                            self.focused_items.remove(focused_item)
-                            log.info(f"Focused items: {self.focused_items}")
-                            break
-                        else:
-                            log.warning(f"{focused_item} BUY Problem !")
 
 #----------------------------------------------------------------------------------------------------------
 
