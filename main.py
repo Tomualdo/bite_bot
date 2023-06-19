@@ -26,6 +26,9 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.desired_items = ['Blarkim']
+        self.focused_items = []
+        self.shop_item_list = None
         self.attack = None
         self.level = None
         self.gold = None
@@ -377,13 +380,73 @@ class BraveBot(webdriver.Chrome):
             "/city/shop/shoes/",
             "/city/shop/shields/"
         ]
+
+        self.shop_item_list = {}
+
         for item_page in item_pages:
             self.get(self.URL + item_page)
 
             shop = self.find_element(By.ID, "shopOverview")
             shop_items = shop.find_elements(By.TAG_NAME, 'tr')
 
+            # 'Marsil
+            # (Tvoj inventár: 0 kus(ov))
+            #
+            # Základná šanca na zásah: +1
+            # Bonusová šanca na zásah: +2
+            # Zručnosť: +5
+            #
+            # Nákupná cena: 71.492
+            # Zvýhodnená cena: 17.873
+            # Predpoklady: úroveň 37
+            #
+            # ---'
+            for item in shop_items:
+                try:
+                    item_name = re.search('^(.*)\n', item.text)
+                    inventory = re.search('^.*\n.* (\d+) ', item.text)
+                    price = re.search('.*Nákupná cena: ([\d\.]+)', item.text)
+                    level = re.search('.*Predpoklady: úroveň (\d+)', item.text)
+                    if item_name:
+                        self.shop_item_list[item_name.group(1)] = {
+                            'inventory': int(inventory.group(1)),
+                            'price': int(price.group(1).replace('.', '')),
+                            'level': int(level.group(1)),
+                            'type': item_page
+                        }
+                except AttributeError as e:
+                    log.warning(f"item type {item_page} item {item.text}: {e}")
+        # -----------------------------------------------------------------------------
+        # buy desired item
 
+        for desired_item in self.desired_items:
+            if desired_item in self.shop_item_list.keys() \
+                    and self.level >= self.shop_item_list[desired_item] \
+                    and self.shop_item_list[desired_item]['inventory'] == 0 \
+                    and desired_item not in self.focused_items:
+                self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
+                log.info(f"New focused item {desired_item}")
+
+        self.get_player_info() # update player stats - mainly for gold
+        for focused_item in self.focused_items:
+            if self.gold >= self.shop_item_list[focused_item]['price']:
+                # it is SHOPPING time
+                self.get(self.URL + self.shop_item_list[focused_item]['type'])
+                shop = self.find_element(By.ID, "shopOverview")
+                shop_items = shop.find_elements(By.TAG_NAME, 'tr')
+                for item in shop_items:
+                    if focused_item in item.text:
+                        log.info(f"We buying : {item.text}")
+                        it = item.find_element(By.TAG_NAME, "a")
+                        it = it.get_attribute('href')
+                        if it:
+                            log.info(f"{it}")
+                            self.get(it)
+                            self.focused_items.remove(focused_item)
+                            log.info(f"Focused items: {self.focused_items}")
+                            break
+                        else:
+                            log.warning(f"{focused_item} BUY Problem !")
 
 #----------------------------------------------------------------------------------------------------------
 
@@ -428,6 +491,8 @@ def main():
             try:
                 bot.get_player_info()
                 log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:} level: {bot.level} att: {bot.attack}")
+                bot.shop_item()
+
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
                     bot.login()
@@ -442,15 +507,25 @@ def main():
                 # ----------
                 while bot.ap[0] >= 3 and bot.energy > 0.35:
                     bot.do_adventure()
-                    bot.stats_increase()
+                    if not bot.focused_items:
+                        bot.stats_increase()
                     bot.get_player_info()
+                    bot.shop_item()
 
                 if bot.ap[0] >=1:
-                    if not bot.go_hunt():
+                    if not bot.go_hunt(target="Mesto"):
                         sleep(bot.t_delta.seconds)
-                    bot.stats_increase()
+                    if not bot.focused_items:
+                        bot.stats_increase()
+                    bot.get_player_info()
+                    bot.shop_item()
 
-                log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:} level: {bot.level} att: {bot.attack}")
+                log.info(f" gold: {bot.gold}"
+                         f" energy: {bot.energy:}"
+                         f"  ap: {bot.ap:}"
+                         f" level: {bot.level}"
+                         f" att: {bot.attack}"
+                         f"\nFocus list {bot.focused_items}")
             except Exception as e:
                 log.error(f"{e}")
 
