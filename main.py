@@ -389,9 +389,12 @@ class BraveBot(webdriver.Chrome):
             log.info("Getting FIRST shop data...")
             self._get_shop_data(item_pages)
             self.last_shop_visit = datetime.datetime.now()
+            now_shop_visit = datetime.datetime.now()
 
-        if (self.last_shop_visit - now_shop_visit).seconds > 60*5:
-            log.info("skipping shop data...")
+        shop_delay = (now_shop_visit - self.last_shop_visit).seconds
+        log.info(f"shop delay: {shop_delay:}")
+        if shop_delay < 60*5:
+            log.info("skipping shop data... time diff is {}")
         else:
             log.info("Getting shop data...")
             self._get_shop_data(item_pages)
