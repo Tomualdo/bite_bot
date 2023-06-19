@@ -154,7 +154,8 @@ class BraveBot(webdriver.Chrome):
             log.info(f"Work in progress...")
             self.t_delta = self.get_countdown()
             # log.info(f"Remaining time {self.t_delta}")
-            log.info(f"Remaining time {self.t_delta}")
+            log.info(f"Remaining time {self.t_delta} "
+                     f"until {(datetime.datetime.now() + self.t_delta).strftime('%H:%M:%S')}")
             return True
         log.info(f"No work")
         return False
