@@ -427,7 +427,8 @@ class BraveBot(webdriver.Chrome):
                             self.focused_items.remove(focused_item)
                             log.info("Removing focused items...")
                             log.info(f"Focused items: {self.focused_items}")
-                            # activate new item
+                            # TODO: activate new item
+                            # self.find_element(By.PARTIAL_LINK_TEXT, "Rukavice").click()
                             break
                         else:
                             log.warning(f"{focused_item} BUY Problem !")
