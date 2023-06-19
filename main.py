@@ -424,9 +424,9 @@ def main():
         bot = BraveBot()
         bot.get_main_page()
         bot.login()
-        bot.get_player_info()
         while True:
             try:
+                bot.get_player_info()
                 log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:} level: {bot.level} att: {bot.attack}")
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
@@ -443,6 +443,7 @@ def main():
                 while bot.ap[0] >= 3 and bot.energy > 0.35:
                     bot.do_adventure()
                     bot.stats_increase()
+                    bot.get_player_info()
 
                 if bot.ap[0] >=1:
                     if not bot.go_hunt():
