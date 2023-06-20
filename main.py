@@ -377,11 +377,11 @@ class BraveBot(webdriver.Chrome):
         self.get_ap()
         self.get_gold()
         log.info(f"Player info received:\n"
-                 f" gold: {self.gold}\n"
-                 f" energy: {self.energy:}\n"
-                 f"  ap: {self.ap:}\n"
-                 f" level: {self.level}\n"
-                 f" att: {self.attack}\n"
+                 f"gold: {self.gold}\n"
+                 f"energy: {self.energy:}\n"
+                 f"ap: {self.ap:}\n"
+                 f"level: {self.level}\n"
+                 f"att: {self.attack}\n"
                  f"Focus list {self.focused_items}")
 
     def shop_item(self):
@@ -437,8 +437,6 @@ class BraveBot(webdriver.Chrome):
                     and desired_item not in self.focused_items:
                 self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
                 log.info(f"New focused item {desired_item}")
-            else:
-                log.debug(f"Not applying for item {desired_item}")
 
         self.get_player_info() # update player stats - mainly for gold
         for focused_item in self.focused_items:
@@ -601,8 +599,10 @@ def main():
                 if bot.ap[0] >=1 and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 1 --- we are going for HUNT")
                     bot.get_player_info()
-                    if not bot.go_hunt(target="Mesto"):
-                        sleep(bot.t_delta.seconds)
+                    if bot.ap[0] >= 2:
+                        bot.go_hunt(target="Mesto")
+                    if bot.ap[0] >= 1:
+                        bot.go_hunt(target="Dedina")
                     if not bot.focused_items:
                         bot.stats_increase()
                     bot.get_player_info()
