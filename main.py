@@ -382,7 +382,7 @@ class BraveBot(webdriver.Chrome):
                  f"att: {self.attack}\n"
                  f"Focus list {self.focused_items}")
 
-    def shop_item(self, force=False):
+    def shop_item(self, force=False, buy_only=False):
 
         item_pages = [
             "/city/shop/weapons/",
@@ -407,22 +407,29 @@ class BraveBot(webdriver.Chrome):
 
         }
 
-        # check if we need to get shop data
-        now_shop_visit = datetime.datetime.now()
-
-        if not self.last_shop_visit:
-            log.info("Getting FIRST shop data...")
-            self._get_shop_data(item_pages)
-            self.last_shop_visit = datetime.datetime.now()
+        if not buy_only:
+            # check if we need to get shop data
             now_shop_visit = datetime.datetime.now()
 
-        shop_delay = (now_shop_visit - self.last_shop_visit).seconds
-        if shop_delay < 60*5 or not force:
-            log.info(f"skipping shop data... time diff is {shop_delay}")
+            if not self.last_shop_visit:
+                log.info("Getting FIRST shop data...")
+                self._get_shop_data(item_pages)
+                now_shop_visit = datetime.datetime.now()  # update again for first run
+
+            shop_delay = (now_shop_visit - self.last_shop_visit).seconds
+            if shop_delay < 60*5:
+                log.info(f"skipping shop data... time diff is {shop_delay}")
+            elif force:
+                log.info("Getting FORCE shop data...")
+                self._get_shop_data(item_pages)
+            else:
+                self._get_shop_data(item_pages)
+
         else:
-            log.info("Getting shop data...")
-            self._get_shop_data(item_pages)
-            self.last_shop_visit = datetime.datetime.now()
+            log.info(f"buy_only is active")
+            if not self.last_shop_visit:
+                log.warning(f"We do not have any shop data...")
+                self._get_shop_data(item_pages)
 
 
         # -----------------------------------------------------------------------------
@@ -479,6 +486,7 @@ class BraveBot(webdriver.Chrome):
                             log.warning(f"{focused_item} BUY Problem !")
 
     def _get_shop_data(self, item_pages):
+        log.info("Getting shop data...")
         self.shop_item_list = {}
         for item_page in item_pages:
             log.info(f"Getting page {self.URL + item_page}")
@@ -519,8 +527,10 @@ class BraveBot(webdriver.Chrome):
                 except AttributeError as e:
                     log.warning(f"item type {item_page} item {item.text}: {e}")
 
+        self.last_shop_visit = datetime.datetime.now()
+        log.info(f"Shop data successfully updated")
 
-    def end():
+    def end(self):
         pass
 #----------------------------------------------------------------------------------------------------------
 
