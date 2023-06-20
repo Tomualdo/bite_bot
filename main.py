@@ -437,6 +437,8 @@ class BraveBot(webdriver.Chrome):
                     and desired_item not in self.focused_items:
                 self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
                 log.info(f"New focused item {desired_item}")
+            else:
+                log.debug(f"Not applying for item {desired_item}")
 
         self.get_player_info() # update player stats - mainly for gold
         for focused_item in self.focused_items:
