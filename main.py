@@ -149,6 +149,7 @@ class BraveBot(webdriver.Chrome):
         return self.check_if_work_in_progress()
 
     def check_if_work_in_progress(self):
+        log.info(f"Check if we are having work in progres ")
         self.get(self.URL + "/city/graveyard")
         self.t_delta = None
         if 'working' in self.current_url:
@@ -159,7 +160,7 @@ class BraveBot(webdriver.Chrome):
             log.info(f"Remaining time {self.t_delta} "
                      f"until {(datetime.datetime.now() + self.t_delta).strftime('%H:%M:%S')}")
             return True
-        log.info(f"No work")
+        log.info(f"No work in progress")
         return False
 
     def go_grave(self, w='0:30'):
@@ -568,6 +569,9 @@ def main():
             try:
                 bot.get_player_info()
                 bot.shop_item()
+                if bot.check_if_work_in_progress():
+                    log.info(f"working for {bot.t_delta.seconds} seconds")
+                    sleep(bot.t_delta.seconds)
 
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
@@ -580,9 +584,10 @@ def main():
                     bot.go_grave(w="1:30")
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
+                    bot.get_player_info()
 
                 # ----------
-                while bot.ap[0] >= 3 and bot.energy > 0.35:
+                while bot.ap[0] >= 3 and bot.energy > 0.35 and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
                     bot.get_player_info()
                     bot.do_adventure()
@@ -591,7 +596,7 @@ def main():
                     bot.get_player_info()
                     bot.shop_item()
 
-                if bot.ap[0] >=1:
+                if bot.ap[0] >=1 and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 1 --- we are going for HUNT")
                     bot.get_player_info()
                     if not bot.go_hunt(target="Mesto"):
