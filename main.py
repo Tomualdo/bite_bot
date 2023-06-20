@@ -382,7 +382,7 @@ class BraveBot(webdriver.Chrome):
                  f"att: {self.attack}\n"
                  f"Focus list {self.focused_items}")
 
-    def shop_item(self, force=False, buy_only=False):
+    def shop_item(self, force_shop_data_update=False, buy_only=False):
 
         item_pages = [
             "/city/shop/weapons/",
@@ -419,7 +419,7 @@ class BraveBot(webdriver.Chrome):
             shop_delay = (now_shop_visit - self.last_shop_visit).seconds
             if shop_delay < 60*5:
                 log.info(f"skipping shop data... time diff is {shop_delay}")
-            elif force:
+            elif force_shop_data_update:
                 log.info("Getting FORCE shop data...")
                 self._get_shop_data(item_pages)
             else:
@@ -581,34 +581,32 @@ def main():
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
 
+                # ----------------------------------------------------------------------------------------
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
                     bot.login()
                     bot.get_player_info()
+                # ----------------------------------------------------------------------------------------
 
                 if bot.ap[0] == 0 or bot.energy < 0.09:
                     log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
                     bot.get_player_info()
                     if bot.focused_items:
-                        bot.shop_item(force=True)
+                        bot.shop_item(buy_only=True)
                     bot.go_grave(w="1:30")
                     bot.check_if_work_in_progress()
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
-                    bot.get_player_info()
-                    if bot.focused_items:
-                        bot.shop_item(force=True)
+                    _after_action_strategy(bot)
 
-                # ----------
+                # ----------------------------------------------------------------------------------------
                 while bot.ap[0] >= 3 and bot.energy > 0.35 and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
                     bot.get_player_info()
                     bot.do_adventure()
-                    if not bot.focused_items:
-                        bot.stats_increase()
-                    bot.get_player_info()
-                    bot.shop_item()
+                    _after_action_strategy(bot)
 
+                # ----------------------------------------------------------------------------------------
                 if bot.ap[0] >=1 and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 1 --- we are going for HUNT")
                     bot.get_player_info()
@@ -616,10 +614,8 @@ def main():
                         bot.go_hunt(target="Mesto")
                     if bot.ap[0] >= 1:
                         bot.go_hunt(target="Dedina")
-                    if not bot.focused_items:
-                        bot.stats_increase()
-                    bot.get_player_info()
-                    bot.shop_item()
+                    _after_action_strategy(bot)
+
 
 
             except Exception as e:
@@ -634,7 +630,12 @@ def main():
                     repeat_flag = True
 
 
-
+def _after_action_strategy(bot):
+    bot.get_player_info()
+    if not bot.focused_items:
+        bot.stats_increase()
+    else:
+        bot.shop_item(buy_only=True)
 
 
 if __name__ == '__main__':
