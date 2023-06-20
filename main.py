@@ -153,10 +153,8 @@ class BraveBot(webdriver.Chrome):
         self.get(self.URL + "/city/graveyard")
         self.t_delta = None
         if 'working' in self.current_url:
-            # log.info(f"Work in progress...")
             log.info(f"Work in progress...")
             self.t_delta = self.get_countdown()
-            # log.info(f"Remaining time {self.t_delta}")
             log.info(f"Remaining time {self.t_delta} "
                      f"until {(datetime.datetime.now() + self.t_delta).strftime('%H:%M:%S')}")
             return True
@@ -384,7 +382,7 @@ class BraveBot(webdriver.Chrome):
                  f"att: {self.attack}\n"
                  f"Focus list {self.focused_items}")
 
-    def shop_item(self):
+    def shop_item(self, force=False):
 
         item_pages = [
             "/city/shop/weapons/",
@@ -419,7 +417,7 @@ class BraveBot(webdriver.Chrome):
             now_shop_visit = datetime.datetime.now()
 
         shop_delay = (now_shop_visit - self.last_shop_visit).seconds
-        if shop_delay < 60*5:
+        if shop_delay < 60*5 or not force:
             log.info(f"skipping shop data... time diff is {shop_delay}")
         else:
             log.info("Getting shop data...")
@@ -581,10 +579,15 @@ def main():
                 if bot.ap[0] == 0 or bot.energy < 0.09:
                     log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
                     bot.get_player_info()
+                    if bot.focused_items:
+                        bot.shop_item(force=True)
                     bot.go_grave(w="1:30")
+                    bot.check_if_work_in_progress()
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
                     bot.get_player_info()
+                    if bot.focused_items:
+                        bot.shop_item(force=True)
 
                 # ----------
                 while bot.ap[0] >= 3 and bot.energy > 0.35 and not bot.check_if_work_in_progress():
