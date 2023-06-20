@@ -27,7 +27,7 @@ class BraveBot(webdriver.Chrome):
 
     def __init__(self):
         self.last_shop_visit = None
-        self.desired_items = ['Blarkim']
+        self.desired_items = ['Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar']
         self.focused_items = []
         self.exception_items = ['Valon']
         self.shop_item_list = None
@@ -270,6 +270,7 @@ class BraveBot(webdriver.Chrome):
         if "profile/index" not in self.current_url:
             self.get_main_page()
         gold = self.find_element(By.XPATH, "//*[@id='infobar']").text
+        log.debug(f"Print raw infobar: {gold}")
         gold = re.search('.*\n([\d\.]+) .*', gold).group(1).replace('.', '')
         self.gold = int(gold)
         return int(gold)
@@ -296,6 +297,7 @@ class BraveBot(webdriver.Chrome):
 
         import random
         ss = True
+        safety_counter = 0
         while ss:
             self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             a = self.find_elements(By.XPATH, "//*[@class='btn']")
@@ -306,8 +308,13 @@ class BraveBot(webdriver.Chrome):
                 break
             rnd = random.choice(a)
             if 'Dobrodružstvo končí' in rnd.text:
+                safety_counter += 1
+                if safety_counter >=100:
+                    log.error(f"SAFETY COUNTER REACHED in ADVENTURE LOOP...")
+                    break
                 continue
             log.info(f"{ss} {rnd.text}")
+            safety_counter = 0
             rnd.click()
 
         # check at the end if we have enough energy otherwise quit
@@ -368,6 +375,13 @@ class BraveBot(webdriver.Chrome):
         self.get_level()
         self.get_ap()
         self.get_gold()
+        log.info(f"Player info received:\n"
+                 f" gold: {self.gold}\n"
+                 f" energy: {self.energy:}\n"
+                 f"  ap: {self.ap:}\n"
+                 f" level: {self.level}\n"
+                 f" att: {self.attack}\n"
+                 f"Focus list {self.focused_items}")
 
     def shop_item(self):
 
@@ -381,6 +395,18 @@ class BraveBot(webdriver.Chrome):
             "/city/shop/shoes/",
             "/city/shop/shields/"
         ]
+
+        item_activation_list_in_profile = {
+            item_pages[0]: 'Zbrane',
+            item_pages[1]: 'Elixíry',
+            item_pages[2]: 'Helmy',
+            item_pages[3]: 'Brnenie',
+            item_pages[4]: 'Veci',
+            item_pages[5]: 'Rukavice',
+            item_pages[6]: 'Topánky',
+            item_pages[7]: 'Štíty',
+
+        }
 
         # check if we need to get shop data
         now_shop_visit = datetime.datetime.now()
@@ -426,12 +452,30 @@ class BraveBot(webdriver.Chrome):
                         if it:
                             log.info(f"{it}")
                             self.get(it)
-                            self.focused_items.remove(focused_item)
-                            log.info("Removing focused items...")
-                            log.info(f"Focused items: {self.focused_items}")
-                            # TODO: activate new item
-                            # self.find_element(By.PARTIAL_LINK_TEXT, "Rukavice").click()
-                            break
+                            log.info(f"WE bought {it}".center(50, "*"))
+                            #  --------------- activate new item -------------------
+                            log.info(f"ACTIVATE new item".center(50, "-"))
+                            self.get(self.URL + '/profile')
+                            self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
+                            # expand item tab
+                            self.find_element(
+                                By.PARTIAL_LINK_TEXT,
+                                item_activation_list_in_profile[self.shop_item_list[focused_item]['type']]).click()
+                            my_items_table = self.find_element(By.ID, "accordion")
+                            my_items = my_items_table.find_elements(By.TAG_NAME, 'tr') # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
+                            for my_item in my_items:
+                                if focused_item in my_item.text:
+                                    log.info(f"We are activating : {my_item.text}")
+                                    activation_item = my_item.find_element(By.TAG_NAME, "a")
+                                    activation_item = activation_item.get_attribute('href')
+                                    if activation_item:
+                                        log.info(f"activation item href: {activation_item}")
+                                        self.get(activation_item)
+                                        # now we can remove focused item
+                                        self.focused_items.remove(focused_item)
+                                        log.info("Removing focused items...")
+                                        log.info(f"Focused items: {self.focused_items}")
+                                        break
                         else:
                             log.warning(f"{focused_item} BUY Problem !")
 
@@ -477,6 +521,8 @@ class BraveBot(webdriver.Chrome):
                     log.warning(f"item type {item_page} item {item.text}: {e}")
 
 
+    def end():
+        pass
 #----------------------------------------------------------------------------------------------------------
 
 import platform
@@ -521,7 +567,6 @@ def main():
         while True:
             try:
                 bot.get_player_info()
-                log.info(f" gold: {bot.gold} energy: {bot.energy:}  ap: {bot.ap:} level: {bot.level} att: {bot.attack}")
                 bot.shop_item()
 
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
@@ -530,13 +575,16 @@ def main():
                     bot.get_player_info()
 
                 if bot.ap[0] == 0 or bot.energy < 0.09:
-                    log.info(f"going grave {bot.ap[0]:} {bot.energy:}")
+                    log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                    bot.get_player_info()
                     bot.go_grave(w="1:30")
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
 
                 # ----------
                 while bot.ap[0] >= 3 and bot.energy > 0.35:
+                    log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
+                    bot.get_player_info()
                     bot.do_adventure()
                     if not bot.focused_items:
                         bot.stats_increase()
@@ -544,6 +592,8 @@ def main():
                     bot.shop_item()
 
                 if bot.ap[0] >=1:
+                    log.info(f"bot AP is {bot.ap[0]} >= 1 --- we are going for HUNT")
+                    bot.get_player_info()
                     if not bot.go_hunt(target="Mesto"):
                         sleep(bot.t_delta.seconds)
                     if not bot.focused_items:
@@ -551,12 +601,7 @@ def main():
                     bot.get_player_info()
                     bot.shop_item()
 
-                log.info(f" gold: {bot.gold}"
-                         f" energy: {bot.energy:}"
-                         f"  ap: {bot.ap:}"
-                         f" level: {bot.level}"
-                         f" att: {bot.attack}"
-                         f"\nFocus list {bot.focused_items}")
+
             except Exception as e:
                 log.error(f"{e}")
                 err_counter += 1
