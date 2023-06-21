@@ -28,7 +28,8 @@ class BraveBot(webdriver.Chrome):
     def __init__(self):
         self.adventure_in_progress = None
         self.last_shop_visit = None
-        self.desired_items = ['Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar']
+        self.desired_items = ['Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar', 'Yasutsuna'
+                              'Gorgoth']
         self.focused_items = []
         self.exception_items = ['Valon']
         self.shop_item_list = None
@@ -169,6 +170,8 @@ class BraveBot(webdriver.Chrome):
     def go_grave(self, w='0:30'):
         self.get(self.URL + "/city/graveyard")
         if not self.check_if_work_in_progress():
+            if self.adventure_in_progress:
+                self.do_adventure(finish=True)
             work_time = self.find_element(By.XPATH, "//select[contains(@name,'workDuration')]")
             work_time.send_keys(w)
             self.find_element(By.XPATH, "//input[contains(@name,'dowork')]").submit()
@@ -279,8 +282,15 @@ class BraveBot(webdriver.Chrome):
         self.gold = int(gold)
         return int(gold)
 
-    def do_adventure(self, min_energy=0.35):
-        self.get_energy()
+    def do_adventure(self, min_energy=0.35, finish=False):
+
+        if finish:
+            if 'Pokračovať (3 AB)' in self.page_source:
+                log.info(f"low energy {self.energy} we have to end adventure")
+                self.get(self.URL + "/city/adventure/decision/36")
+                self.get(self.URL + "/city/adventure")
+                self.adventure_in_progress = False
+                return
 
         self.get(self.URL + "/city/adventure")
         if self.check_if_work_in_progress():
@@ -451,6 +461,11 @@ class BraveBot(webdriver.Chrome):
                     and desired_item not in self.focused_items:
                 self.focused_items.append(desired_item)  # We want this item so other shopping activities have to be suppressed
                 log.info(f"New focused item {desired_item}")
+
+        # TODO: remove if in focused olready own
+        if my_item in self.focused_items:
+            pass
+
 
         self.get_player_info() # update player stats - mainly for gold
         for focused_item in self.focused_items:
