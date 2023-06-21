@@ -179,6 +179,10 @@ class BraveBot(webdriver.Chrome):
             return False
         for repeat in range(r):
             self.get(self.URL + "/city/grotte")
+            self.get_player_info()
+            if self.energy< 0.09 or self.ap[0]:
+                log.warn("not enough power to fight")
+                break
             if level is None or level == 1:
                 self.find_element(By.XPATH, "//input[contains(@value,'Ľahký')]").click()
             if level == 2:
@@ -197,10 +201,10 @@ class BraveBot(webdriver.Chrome):
                 log.info("not enough energy")
                 break
 
-            if self.USER in winner and (score[0] / score[1] > 1):
-                if not level and not level >= 3:
-                    level += 1
-                    log.info(f'increase level to {level}')
+            # if self.USER in winner and (score[0] / score[1] > 1):
+            #     if not level and not level >= 3:
+            #         level += 1
+            #         log.info(f'increase level to {level}')
 
     def go_attack(self, r=1):
         self.get(self.URL + "/robbery")
@@ -463,7 +467,7 @@ class BraveBot(webdriver.Chrome):
 
         for desired_item in self.desired_items:
             if desired_item in self.shop_item_list.keys() \
-                    and self.level >= self.shop_item_list[desired_item]['level'] \
+                    and self.level == self.shop_item_list[desired_item]['level'] \
                     and self.shop_item_list[desired_item]['inventory'] == 0 \
                     and desired_item not in self.focused_items:
                 self.focused_items.append(
