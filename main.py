@@ -463,8 +463,8 @@ class BraveBot(webdriver.Chrome):
                 log.info(f"New focused item {desired_item}")
 
         # TODO: remove if in focused olready own
-        if my_item in self.focused_items:
-            pass
+        # if my_item in self.focused_items:
+        #     pass
 
 
         self.get_player_info() # update player stats - mainly for gold
