@@ -118,7 +118,8 @@ class BraveBot(webdriver.Chrome):
     def get_energy(self):
         energy = self.find_element(By.XPATH, "//*[@id='infobar']").text
         energy = re.search('.* \d+ \/ \d+.* (\d+\.?\d+ / \d+\.?\d+)', energy).group(1).replace('.', '').split(' / ')
-        self.energy = list(map(int, energy))
+        energy = list(map(int, energy))
+        self.energy = energy[0] / energy[1]
         return self.energy
 
 
