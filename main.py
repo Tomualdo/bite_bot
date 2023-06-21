@@ -180,7 +180,7 @@ class BraveBot(webdriver.Chrome):
         for repeat in range(r):
             self.get(self.URL + "/city/grotte")
             self.get_player_info()
-            if self.energy< 0.09 or self.ap[0]:
+            if self.energy< 0.09 or self.ap[0] == 0:
                 log.warn("not enough power to fight")
                 break
             if level is None or level == 1:
