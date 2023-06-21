@@ -26,6 +26,7 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.adventure_in_progress = None
         self.last_shop_visit = None
         self.desired_items = ['Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar']
         self.focused_items = []
@@ -150,6 +151,9 @@ class BraveBot(webdriver.Chrome):
 
     def check_if_work_in_progress(self):
         log.info(f"Check if we are having work in progres ")
+        if self.adventure_in_progress:
+            log.warning("Adventure in progress...")
+            self.do_adventure()
         self.get(self.URL + "/city/graveyard")
         self.t_delta = None
         if 'working' in self.current_url:
@@ -286,6 +290,8 @@ class BraveBot(webdriver.Chrome):
                 log.info(f"low energy {self.energy} we have to end adventure")
                 self.get(self.URL + "/city/adventure/decision/36")
                 self.get(self.URL + "/city/adventure")
+                self.adventure_in_progress = False
+                return
 
         if 'Dobrodružstvo končí' not in self.page_source:
             self.get(self.URL + "/city/adventure/startquest")
@@ -297,6 +303,7 @@ class BraveBot(webdriver.Chrome):
         import random
         ss = True
         safety_counter = 0
+        self.adventure_in_progress = True
         while ss:
             self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             a = self.find_elements(By.XPATH, "//*[@class='btn']")
@@ -328,6 +335,7 @@ class BraveBot(webdriver.Chrome):
                 log.info(f"low energy {self.energy} we have to end adventure")
                 self.get(self.URL + "/city/adventure/decision/36")
                 self.get(self.URL + "/city/adventure")
+                self.adventure_in_progress = False
 
     def get_players(self):
         if self.players:
@@ -481,7 +489,7 @@ class BraveBot(webdriver.Chrome):
                                         self.focused_items.remove(focused_item)
                                         log.info("Removing focused items...")
                                         log.info(f"Focused items: {self.focused_items}")
-                                        break
+                                        return
                         else:
                             log.warning(f"{focused_item} BUY Problem !")
 
