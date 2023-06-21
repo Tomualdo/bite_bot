@@ -490,7 +490,8 @@ class BraveBot(webdriver.Chrome):
                                         self.focused_items.remove(focused_item)
                                         log.info("Removing focused items...")
                                         log.info(f"Focused items: {self.focused_items}")
-                                        return
+                                        self.shop_item(force_shop_data_update) # we need to do shop update after activation
+                                        return True
                         else:
                             log.warning(f"{focused_item} BUY Problem !")
 
