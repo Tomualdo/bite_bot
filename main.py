@@ -69,7 +69,7 @@ class BraveBot(webdriver.Chrome):
         self.get_main_page()
 
     def __del__(self):
-        log.debug("destructor")
+        log.info("destructor")
         # self.quit()
 
     def get_main_page(self, URL=None):
@@ -116,18 +116,11 @@ class BraveBot(webdriver.Chrome):
             return datetime.timedelta(0)
 
     def get_energy(self):
-        if "profile/index" not in self.current_url:
-            self.get_main_page()
-        self.find_element(By.LINK_TEXT, "Schopnosti").click()
-        schopnosti = self.find_elements(By.XPATH, ".//*[@id='skills_tab']//td[contains(.,'/')]")
-        if len(schopnosti) == 2:
-            # '(7.810 / 21.500)'
-            regex = re.compile(r'\((\d+\.?\d+) / (\d+\.?\d+)\)')
-            output = regex.match(schopnosti[1].text)
-            energy = list(map(int, [heal.replace('.', '') for heal in output.groups()]))
-            log.info(f"{energy}")
-            self.energy = energy[0] / energy[1]
-            return energy
+        energy = self.find_element(By.XPATH, "//*[@id='infobar']").text
+        energy = re.search('.* \d+ \/ \d+.* (\d+\.?\d+ / \d+\.?\d+)', energy).group(1).replace('.', '').split(' / ')
+        self.energy = list(map(int, energy))
+        return self.energy
+
 
     def go_hunt(self, target='Farma', r=1):
         self.get(self.URL + "/robbery")
@@ -257,8 +250,8 @@ class BraveBot(webdriver.Chrome):
 
     def get_ap(self):
         """'(0/0)7.212    0    15    19 / 124    21.330 / 34.100     10    208'"""
-        if "profile/index" not in self.current_url:
-            self.get_main_page()
+        # if "profile/index" not in self.current_url:
+        #     self.get_main_page()
         ap = self.find_elements(By.XPATH, "//*[@id='infobar']")
         ap = re.search('.* (\d+ \/ \d+).*', ap[0].text).group(1).split(' / ')
         self.ap = list(map(int, ap))
@@ -266,16 +259,16 @@ class BraveBot(webdriver.Chrome):
 
     def get_level(self):
         #(r'\((\d+\.?\d+) / (\d+\.?\d+)\)')
-        if "profile/index" not in self.current_url:
-            self.get_main_page()
+        # if "profile/index" not in self.current_url:
+        #     self.get_main_page()
         level = self.find_element(By.XPATH, "//*[@id='infobar']")
         level = re.search('  (\d+)    (\d+$)', level.text)
         self.level = int(level.group(1))
         self.attack = int(level.group(2))
 
     def get_gold(self):
-        if "profile/index" not in self.current_url:
-            self.get_main_page()
+        # if "profile/index" not in self.current_url:
+        #     self.get_main_page()
         gold = self.find_element(By.XPATH, "//*[@id='infobar']").text
         log.debug(f"Print raw infobar: {gold}")
         gold = re.search('.*\n([\d\.]+) .*', gold).group(1).replace('.', '')
@@ -333,10 +326,13 @@ class BraveBot(webdriver.Chrome):
             log.info(f"{ss} {rnd.text}")
             safety_counter = 0
             rnd.click()
+            self.get_player_info()
+            if self.energy < 0.1:
+                log.info(f"low energy during adventure :{self.energy} we have to end adventure")
+                self.get(self.URL + "/city/adventure/decision/36")
+                self.get(self.URL + "/city/adventure")
+                self.adventure_in_progress = False
 
-        # check at the end if we have enough energy otherwise quit
-        self.get_energy()
-        self.get_ap()
         self.get(self.URL + "/city/adventure")
         if self.check_if_work_in_progress():
             return
@@ -505,7 +501,7 @@ class BraveBot(webdriver.Chrome):
                                         self.focused_items.remove(focused_item)
                                         log.info("Removing focused items...")
                                         log.info(f"Focused items: {self.focused_items}")
-                                        self.shop_item(force_shop_data_update) # we need to do shop update after activation
+                                        self.shop_item(force_shop_data_update=True) # we need to do shop update after activation
                                         return True
                         else:
                             log.warning(f"{focused_item} BUY Problem !")
