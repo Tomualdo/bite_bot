@@ -153,7 +153,8 @@ class BraveBot(webdriver.Chrome):
         log.info(f"Check if we are having work in progres ")
         if self.adventure_in_progress:
             log.warning("Adventure in progress...")
-            self.do_adventure()
+            return False
+
         self.get(self.URL + "/city/graveyard")
         self.t_delta = None
         if 'working' in self.current_url:
