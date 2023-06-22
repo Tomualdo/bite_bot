@@ -644,7 +644,7 @@ class VirtualDisplay:
         pass
 
     def __exit__(self, type, value, traceback):
-        if plt.system() == 'Linux':
+        if platform.system() == 'Linux':
             log.info("Virtual display Stop")
             self.display.stop()
         else:
