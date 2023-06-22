@@ -725,6 +725,9 @@ def main():
 
                 if bot.ap[0] >= 1 and bot.energy <= MIN_ENERGY and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
+                    if bot.energy <= 0.05:
+                        log.warning("too low energy")
+                        continue
                     if bot.ap[0] >= 2:
                         bot.go_hunt(target="Mesto")
                     if bot.ap[0] >= 1:
