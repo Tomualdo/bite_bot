@@ -32,8 +32,10 @@ class BraveBot(webdriver.Chrome):
         self.adventure_in_progress = None
         self.last_shop_visit = None
         self.desired_items = ['Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar',
-                              'Yasutsuna'
-                              'Gorgoth']
+                              'Yasutsuna',
+                              'Gorgoth',
+                              'Darnam',
+                              ]
         self.focused_items = []
         self.exception_items = ['Valon']
 
