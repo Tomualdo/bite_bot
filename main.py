@@ -460,17 +460,17 @@ class BraveBot(webdriver.Chrome):
             shop_delay = (now_shop_visit - self.last_shop_visit).seconds
             if force_shop_data_update:
                 log.info("Getting FORCE shop data...")
-                self._get_shop_data(self.item_shop_pages)
+                self._get_shop_data()
             elif shop_delay < 60 * 5:
                 log.info(f"skipping shop data... time diff is {shop_delay}")
             else:
-                self._get_shop_data(self.item_shop_pages)
+                self._get_shop_data()
 
         else:
             log.info(f"buy_only is active")
             if not self.last_shop_visit:
                 log.warning(f"We do not have any shop data...")
-                self._get_shop_data(self.item_shop_pages)
+                self._get_shop_data()
 
         # -----------------------------------------------------------------------------
         # buy desired item
@@ -621,6 +621,14 @@ class BraveBot(webdriver.Chrome):
                     return True
         log.error(f"Error in healing method")
         return False
+
+    def get_inventory_space(self):
+        #//*[@id="shop"]/div[2]/div/div[1]/p[2]
+        self.get(self.URL + "/city/shop")
+        content = self.find_element(By.XPATH, "//*[@id='shop']").text
+        #:\nPočet voľných miest v Tvojom inventári: 6 (z celkového počtu 19).\nVýb
+        content = re.search('.* (\d+) \(.* (\d+)\)', content)
+        return content.groups()
 
     def end(self):
         pass
