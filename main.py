@@ -1,7 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.expected_conditions import staleness_of
 from selenium.webdriver.support.wait import WebDriverWait
@@ -586,11 +586,15 @@ class BraveBot(webdriver.Chrome):
                     return False
                 log.info(f"HEALING : {my_item.text}")
                 # check timeout:
-                if 'Čas do konca' in my_item.text:
+                # if 'Čas do konca' in my_item.text:
+                try:
+                    WebDriverWait(self, 1).until(EC.presence_of_element_located((By.ID, "item_cooldown2_2")))
                     log.warning(f"Healing cooldown...")
                     healing_countdown = self.find_element(By.ID, "item_cooldown2_2").text
                     if healing_countdown:
                         return self._parse_time(healing_countdown)
+                except TimeoutException:
+                    log.info("No healing cooldown...")
                 activation_item = my_item.find_element(By.TAG_NAME, "a")
                 activation_item = activation_item.get_attribute('href')
                 if activation_item:
