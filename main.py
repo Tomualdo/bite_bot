@@ -682,7 +682,7 @@ def main():
                     bot.get_healing()
                 # ----------------------------------------------------------------------------------------
 
-                if bot.ap[0] == 0 and bot.energy < MIN_ENERGY:
+                if bot.ap[0] == 0:
                     log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
                     bot.get_player_info()
                     if bot.focused_items:
