@@ -36,6 +36,30 @@ class BraveBot(webdriver.Chrome):
                               'Gorgoth']
         self.focused_items = []
         self.exception_items = ['Valon']
+
+        self.item_shop_pages = [
+            "/city/shop/weapons/",
+            "/city/shop/potions/",
+            "/city/shop/helmets/",
+            "/city/shop/armor/",
+            "/city/shop/stuff/",
+            "/city/shop/gloves/",
+            "/city/shop/shoes/",
+            "/city/shop/shields/"
+        ]
+
+        self.item_list_profile = {
+            self.item_shop_pages[0]: 'Zbrane',
+            self.item_shop_pages[1]: 'Elixíry',
+            self.item_shop_pages[2]: 'Helmy',
+            self.item_shop_pages[3]: 'Brnenie',
+            self.item_shop_pages[4]: 'Veci',
+            self.item_shop_pages[5]: 'Rukavice',
+            self.item_shop_pages[6]: 'Topánky',
+            self.item_shop_pages[7]: 'Štíty',
+
+        }
+
         self.shop_item_list = None
         self.attack = None
         self.level = None
@@ -420,30 +444,7 @@ class BraveBot(webdriver.Chrome):
                  f"att: {self.attack}\n"
                  f"Focus list {self.focused_items}")
 
-    def shop_item(self, force_shop_data_update=False, buy_only=False):
-
-        item_pages = [
-            "/city/shop/weapons/",
-            "/city/shop/potions/",
-            "/city/shop/helmets/",
-            "/city/shop/armor/",
-            "/city/shop/stuff/",
-            "/city/shop/gloves/",
-            "/city/shop/shoes/",
-            "/city/shop/shields/"
-        ]
-
-        item_activation_list_in_profile = {
-            item_pages[0]: 'Zbrane',
-            item_pages[1]: 'Elixíry',
-            item_pages[2]: 'Helmy',
-            item_pages[3]: 'Brnenie',
-            item_pages[4]: 'Veci',
-            item_pages[5]: 'Rukavice',
-            item_pages[6]: 'Topánky',
-            item_pages[7]: 'Štíty',
-
-        }
+    def shop_item(self, force_shop_data_update=False, buy_only=False, activate=True):
 
         if not buy_only:
             # check if we need to get shop data
@@ -451,23 +452,23 @@ class BraveBot(webdriver.Chrome):
 
             if not self.last_shop_visit:
                 log.info("Getting FIRST shop data...")
-                self._get_shop_data(item_pages)
+                self._get_shop_data()
                 now_shop_visit = datetime.datetime.now()  # update again for first run
 
             shop_delay = (now_shop_visit - self.last_shop_visit).seconds
             if force_shop_data_update:
                 log.info("Getting FORCE shop data...")
-                self._get_shop_data(item_pages)
+                self._get_shop_data(self.item_shop_pages)
             elif shop_delay < 60 * 5:
                 log.info(f"skipping shop data... time diff is {shop_delay}")
             else:
-                self._get_shop_data(item_pages)
+                self._get_shop_data(self.item_shop_pages)
 
         else:
             log.info(f"buy_only is active")
             if not self.last_shop_visit:
                 log.warning(f"We do not have any shop data...")
-                self._get_shop_data(item_pages)
+                self._get_shop_data(self.item_shop_pages)
 
         # -----------------------------------------------------------------------------
         # buy desired item
@@ -487,53 +488,59 @@ class BraveBot(webdriver.Chrome):
 
         self.get_player_info()  # update player stats - mainly for gold
         for focused_item in self.focused_items:
-            if self.gold >= self.shop_item_list[focused_item]['price']:
-                # it is SHOPPING time
-                self.get(self.URL + self.shop_item_list[focused_item]['type'])
-                shop = self.find_element(By.ID, "shopOverview")
-                shop_items = shop.find_elements(By.TAG_NAME, 'tr')
-                for item in shop_items:
-                    if focused_item in item.text:
-                        log.info(f"We buying : {item.text}")
-                        it = item.find_element(By.TAG_NAME, "a")
-                        it = it.get_attribute('href')
-                        if it:
-                            log.info(f"{it}")
-                            self.get(it)
-                            log.info(f"WE bought {it}".center(50, "*"))
-                            #  --------------- activate new item -------------------
-                            log.info(f"ACTIVATE new item".center(50, "-"))
-                            self.get(self.URL + '/profile')
-                            self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
-                            # expand item tab
-                            self.find_element(
-                                By.PARTIAL_LINK_TEXT,
-                                item_activation_list_in_profile[self.shop_item_list[focused_item]['type']]).click()
-                            my_items_table = self.find_element(By.ID, "accordion")
-                            my_items = my_items_table.find_elements(By.TAG_NAME,
-                                                                    'tr')  # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
-                            for my_item in my_items:
-                                if focused_item in my_item.text:
-                                    log.info(f"We are activating : {my_item.text}")
-                                    activation_item = my_item.find_element(By.TAG_NAME, "a")
-                                    activation_item = activation_item.get_attribute('href')
-                                    if activation_item:
-                                        log.info(f"activation item href: {activation_item}")
-                                        self.get(activation_item)
-                                        # now we can remove focused item
-                                        self.focused_items.remove(focused_item)
-                                        log.info("Removing focused items...")
-                                        log.info(f"Focused items: {self.focused_items}")
-                                        self.shop_item(
-                                            force_shop_data_update=True)  # we need to do shop update after activation
-                                        return True
-                        else:
-                            log.warning(f"{focused_item} BUY Problem !")
+            if self.gold < self.shop_item_list[focused_item]['price']:
+                log.info(
+                    f"Not enough gold for {focused_item}  {self.gold} < {self.shop_item_list[focused_item]['price']}")
+                continue
+            # it is SHOPPING time
+            self.get(self.URL + self.shop_item_list[focused_item]['type'])
+            shop = self.find_element(By.ID, "shopOverview")
+            shop_items = shop.find_elements(By.TAG_NAME, 'tr')
+            for item in shop_items:
+                if focused_item not in item.text:
+                    continue
+                log.info(f"We buying : {item.text}")
+                it = item.find_element(By.TAG_NAME, "a")
+                it = it.get_attribute('href')
+                log.info(f"{it}")
+                self.get(it)
+                log.info(f"WE bought {it}".center(50, "*"))
+                if not activate:
+                    log.info("Activation is skipped...")
+                    self.focused_items.remove(focused_item)
+                    log.info(f"Removing focused item: {focused_item}")
+                    return
+                #  --------------- activate new item -------------------
+                log.info(f"ACTIVATE new item".center(50, "-"))
+                self.get(self.URL + '/profile')
+                self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
+                # expand item tab
+                self.find_element(
+                    By.PARTIAL_LINK_TEXT,
+                    self.item_list_profile[self.shop_item_list[focused_item]['type']]).click()
+                my_items_table = self.find_element(By.ID, "accordion")
+                my_items = my_items_table.find_elements(By.TAG_NAME,
+                                                        'tr')  # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
+                for my_item in my_items:
+                    if focused_item not in my_item.text:
+                        continue
+                    log.info(f"We are activating : {my_item.text}")
+                    activation_item = my_item.find_element(By.TAG_NAME, "a")
+                    activation_item = activation_item.get_attribute('href')
+                    log.info(f"activation item href: {activation_item}")
+                    self.get(activation_item)
+                    # now we can remove focused item
+                    self.focused_items.remove(focused_item)
+                    log.info("Removing focused items...")
+                    log.info(f"Focused items: {self.focused_items}")
+                    self.shop_item(
+                        force_shop_data_update=True)  # we need to do shop update after activation
+                    return True
 
-    def _get_shop_data(self, item_pages):
+    def _get_shop_data(self):
         log.info("Getting shop data...")
         self.shop_item_list = {}
-        for item_page in item_pages:
+        for item_page in self.item_shop_pages:
             log.info(f"Getting page {self.URL + item_page}")
             self.get(self.URL + item_page)
 
