@@ -680,7 +680,7 @@ def main():
                 bot.get_healing()
             # ----------------------------------------------------------------------------------------
 
-            if bot.ap[0] == 0 or bot.energy < MIN_ENERGY:
+            if bot.ap[0] == 0 and bot.energy < MIN_ENERGY:
                 log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
                 bot.get_player_info()
                 if bot.focused_items:
@@ -721,6 +721,13 @@ def main():
                     bot.do_adventure()
                     _after_action_strategy(bot)
 
+            if bot.ap[0] >= 1 and bot.energy <= MIN_ENERGY and not bot.check_if_work_in_progress():
+                log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
+                if bot.ap[0] >= 2:
+                    bot.go_hunt(target="Mesto")
+                if bot.ap[0] >= 1:
+                    bot.go_hunt(target="Dedina")
+                _after_action_strategy(bot)
 
         except Exception as e:
             log.error(f"{e}")
