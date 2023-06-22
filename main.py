@@ -123,6 +123,7 @@ class BraveBot(webdriver.Chrome):
         energy = self.find_element(By.XPATH, "//*[@id='infobar']").text
         energy = re.search('.* \d+ \/ \d+.* (\d+\.?\d+ / \d+\.?\d+)', energy).group(1).replace('.', '').split(' / ')
         energy = list(map(int, energy))
+        log.info(f"Energy: {energy}")
         self.energy = energy[0] / energy[1]
         return self.energy
 
@@ -183,11 +184,16 @@ class BraveBot(webdriver.Chrome):
             if self.energy< 0.09 or self.ap[0] == 0:
                 log.warn("not enough power to fight")
                 break
+            if level is None:
+                level = random.choice([1,2,2,3,3,3])
             if level is None or level == 1:
+                log.info("Easy Demon")
                 self.find_element(By.XPATH, "//input[contains(@value,'Ľahký')]").click()
             if level == 2:
+                log.info("Advanced Demon")
                 self.find_element(By.XPATH, "//input[contains(@value,'Stredná')]").click()
             if level == 3:
+                log.info("Hard Demon")
                 self.find_element(By.XPATH, "//input[contains(@value,'Ťažká')]").click()
 
             winner = self.find_element(By.XPATH, "//h3[contains(.,'Víťaz')]").text
@@ -600,6 +606,7 @@ class BraveBot(webdriver.Chrome):
                 if activation_item:
                     log.info(f"activation item href: {activation_item}")
                     self.get(activation_item)
+                    self.get_player_info()
                     self.get(origin_page)
                     return True
         log.error(f"Error in healing method")
