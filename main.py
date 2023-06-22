@@ -14,6 +14,7 @@ from time import sleep
 import datetime
 import re
 import random
+import platform
 
 import my_logger
 import cred
@@ -618,9 +619,6 @@ class BraveBot(webdriver.Chrome):
 
 # ----------------------------------------------------------------------------------------------------------
 
-import platform
-import os
-
 if platform.system() == 'Linux':
     from pyvirtualdisplay import Display
 
@@ -628,21 +626,25 @@ pwd = os.path.abspath(os.curdir)
 
 
 class VirtualDisplay:
-    def __init__(self, platform) -> None:
-        if platform == 'Linux':
+    def __init__(self, plt) -> None:
+        if 'Ubuntu 22.04 LTS' in platform.freedesktop_os_release().values():
+            return
+        if plt == 'Linux':
             log.info('Running LINUX !!!')
             self.display = Display(visible=0, size=(1280, 1024))
             self.display.start()
         pass
 
     def __enter__(self):
+        if 'Ubuntu 22.04 LTS' in platform.freedesktop_os_release().values():
+            log.info("Running UBUNTU skip virtual display")
         if platform.system() == 'Linux':
             log.info("Started Virtual diplay")
             # return self.display.start()
         pass
 
     def __exit__(self, type, value, traceback):
-        if platform.system() == 'Linux':
+        if plt.system() == 'Linux':
             log.info("Virtual display Stop")
             self.display.stop()
         else:
@@ -652,93 +654,93 @@ class VirtualDisplay:
 # ----------------------------------------------------------------------------------------------------------
 
 def main():
-    # with VirtualDisplay(platform.system()):
-    bot = BraveBot()
-    bot.get_main_page()
-    bot.login()
-    err_counter = 0
-    MIN_ENERGY = 0.09
-    MIN_ENERGY_ADVENTURE = 0.35
-    repeat_flag = False
-    while True:
-        try:
-            if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
-                bot.get_main_page()
-                bot.login()
+    with VirtualDisplay(platform.system()):
+        bot = BraveBot()
+        bot.get_main_page()
+        bot.login()
+        err_counter = 0
+        MIN_ENERGY = 0.09
+        MIN_ENERGY_ADVENTURE = 0.35
+        repeat_flag = False
+        while True:
+            try:
+                if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
+                    bot.get_main_page()
+                    bot.login()
+                    bot.get_player_info()
+
+                # ----------------------------------------------------------------------------------------
                 bot.get_player_info()
-
-            # ----------------------------------------------------------------------------------------
-            bot.get_player_info()
-            bot.shop_item()
-            if bot.check_if_work_in_progress():
-                log.info(f"working for {bot.t_delta.seconds} seconds")
-                sleep(bot.t_delta.seconds)
-            # ----------------------------------------------------------------------------------------
-            # try to heal up
-            bot.get_player_info()
-            if bot.ap[0] >= 3 and bot.energy < 0.1:
-                bot.get_healing()
-            # ----------------------------------------------------------------------------------------
-
-            if bot.ap[0] == 0 and bot.energy < MIN_ENERGY:
-                log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                bot.shop_item()
+                if bot.check_if_work_in_progress():
+                    log.info(f"working for {bot.t_delta.seconds} seconds")
+                    sleep(bot.t_delta.seconds)
+                # ----------------------------------------------------------------------------------------
+                # try to heal up
                 bot.get_player_info()
-                if bot.focused_items:
-                    bot.shop_item(buy_only=True)
-                bot.go_grave(w="1:30")
-                bot.check_if_work_in_progress()
-                log.info(f"working for {bot.t_delta.seconds} seconds")
-                sleep(bot.t_delta.seconds)
-                _after_action_strategy(bot)
+                if bot.ap[0] >= 3 and bot.energy < 0.1:
+                    bot.get_healing()
+                # ----------------------------------------------------------------------------------------
 
-            # ----------------------------------------------------------------------------------------
-            # randomly choose actions: hunt, cavern ...:
-            choice = random.choice(['hunt', 'cavern', 'cavern', 'cavern', 'cavern','cavern', 'cavern', 'adventure'])
-            bot.get_player_info()
-            # ----------------------------------------------------------------------------------------
-            if choice == 'hunt':
-                if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
-                    log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT")
+                if bot.ap[0] == 0 and bot.energy < MIN_ENERGY:
+                    log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                    bot.get_player_info()
+                    if bot.focused_items:
+                        bot.shop_item(buy_only=True)
+                    bot.go_grave(w="1:30")
+                    bot.check_if_work_in_progress()
+                    log.info(f"working for {bot.t_delta.seconds} seconds")
+                    sleep(bot.t_delta.seconds)
+                    _after_action_strategy(bot)
+
+                # ----------------------------------------------------------------------------------------
+                # randomly choose actions: hunt, cavern ...:
+                choice = random.choice(['hunt', 'cavern', 'cavern', 'cavern', 'cavern','cavern', 'cavern', 'adventure'])
+                bot.get_player_info()
+                # ----------------------------------------------------------------------------------------
+                if choice == 'hunt':
+                    if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
+                        log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT")
+                        if bot.ap[0] >= 2:
+                            bot.go_hunt(target="Mesto")
+                        if bot.ap[0] >= 1:
+                            bot.go_hunt(target="Dedina")
+                        _after_action_strategy(bot)
+                # ----------------------------------------------------------------------------------------
+                elif choice == 'cavern':
+                    if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
+                        log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy} --- we are going for DAEMONS")
+                        if bot.ap[0] > 7:
+                            bot.go_daemons(r=5)
+                        else:
+                            bot.go_daemons()
+                        _after_action_strategy(bot)
+                # ----------------------------------------------------------------------------------------
+                elif choice == 'adventure':
+                    while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE and not bot.check_if_work_in_progress():
+                        log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
+                        bot.get_player_info()
+                        bot.do_adventure()
+                        _after_action_strategy(bot)
+
+                if bot.ap[0] >= 1 and bot.energy <= MIN_ENERGY and not bot.check_if_work_in_progress():
+                    log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
                     if bot.ap[0] >= 2:
                         bot.go_hunt(target="Mesto")
                     if bot.ap[0] >= 1:
                         bot.go_hunt(target="Dedina")
                     _after_action_strategy(bot)
-            # ----------------------------------------------------------------------------------------
-            elif choice == 'cavern':
-                if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
-                    log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy} --- we are going for DAEMONS")
-                    if bot.ap[0] > 7:
-                        bot.go_daemons(r=5)
-                    else:
-                        bot.go_daemons()
-                    _after_action_strategy(bot)
-            # ----------------------------------------------------------------------------------------
-            elif choice == 'adventure':
-                while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE and not bot.check_if_work_in_progress():
-                    log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
-                    bot.get_player_info()
-                    bot.do_adventure()
-                    _after_action_strategy(bot)
 
-            if bot.ap[0] >= 1 and bot.energy <= MIN_ENERGY and not bot.check_if_work_in_progress():
-                log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
-                if bot.ap[0] >= 2:
-                    bot.go_hunt(target="Mesto")
-                if bot.ap[0] >= 1:
-                    bot.go_hunt(target="Dedina")
-                _after_action_strategy(bot)
-
-        except Exception as e:
-            log.error(f"{e}")
-            err_counter += 1
-            if err_counter >= 10:
-                if repeat_flag:
-                    sleep(60)
-                bot.get_main_page()
-                bot.login()
-                err_counter = 0
-                repeat_flag = True
+            except Exception as e:
+                log.error(f"{e}")
+                err_counter += 1
+                if err_counter >= 10:
+                    if repeat_flag:
+                        sleep(60)
+                    bot.get_main_page()
+                    bot.login()
+                    err_counter = 0
+                    repeat_flag = True
 
 
 def _after_action_strategy(bot):
