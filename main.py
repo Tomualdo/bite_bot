@@ -24,7 +24,7 @@ log = my_logger.log('main')
 
 
 class BraveBot(webdriver.Chrome):
-    URL = "https://s23-sk.bitefight.gameforge.com"
+    URL = cred.URL
     USER = cred.USER
     PWD = cred.PWD
     players = {}
@@ -32,13 +32,11 @@ class BraveBot(webdriver.Chrome):
     def __init__(self):
         self.adventure_in_progress = None
         self.last_shop_visit = None
-        self.desired_items = ['Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar',
-                              'Yasutsuna',
-                              'Gorgoth',
-                              'Darnam',
-                              'Baan',
-
-                              ]
+        self.desired_items = list(
+            {
+                'Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar', 'Yasutsuna', 'Gorgoth',
+                'Darnam', 'Baan', 'Kalima', 'Sosul', 'Erenthight', 'Ybor', 'Eriall', 'Rimdil', 'Hyarspex'
+            })
         self.focused_items = []
         self.exception_items = ['Valon']
 
@@ -112,6 +110,7 @@ class BraveBot(webdriver.Chrome):
 
     def login(self):
         log.info(f"Login...")
+        self.get(self.URL + '/user/login')
         usr = self.find_element(By.NAME, "user")
         usr.send_keys(self.USER)
         usr = self.find_element(By.NAME, "pass")
@@ -153,7 +152,7 @@ class BraveBot(webdriver.Chrome):
 
     def get_energy(self):
         energy = self.find_element(By.XPATH, "//*[@id='infobar']").text
-        energy = re.search('.* \d+ \/ \d+.* (\d+\.?\d+ / \d+\.?\d+)', energy).group(1).replace('.', '').split(' / ')
+        energy = re.search('.* \d+ \/ \d+.* ([-\d+\.]+ \/ \d+\.?\d+)', energy).group(1).replace('.', '').split(' / ')
         energy = list(map(int, energy))
         log.info(f"Energy: {energy}")
         self.energy = energy[0] / energy[1]
@@ -270,6 +269,7 @@ class BraveBot(webdriver.Chrome):
                 break
 
     def stats_increase(self, st=None, r=1):
+        self.hideout()
         log.info(f"Try to increase stats...")
         for repeat in range(r):
             if "profile/index" not in self.current_url:
@@ -298,7 +298,7 @@ class BraveBot(webdriver.Chrome):
         # if "profile/index" not in self.current_url:
         #     self.get_main_page()
         ap = self.find_elements(By.XPATH, "//*[@id='infobar']")
-        ap = re.search('.* (\d+ \/ \d+).*', ap[0].text).group(1).split(' / ')
+        ap = re.search('.* (\d+ \/ \d+) .*', ap[0].text).group(1).split(' / ')
         self.ap = list(map(int, ap))
         return list(map(int, ap))
 
@@ -362,6 +362,13 @@ class BraveBot(webdriver.Chrome):
             if ss[0] == ss[1]:
                 break
             rnd = random.choice(a)
+            if 'Začať dobrodružstvo' in self.page_source:
+                log.warning("We probably do not have enough energy...quitting")
+                self.adventure_in_progress = False
+                return
+            if 'Spotreboval si už všetku svoju energiu, takže toto dobrodužstvo sa teraz končí.' in self.page_source:
+                self.adventure_in_progress = False
+                return
             if 'Dobrodružstvo končí' in rnd.text:
                 safety_counter += 1
                 if safety_counter >= 100:
@@ -371,9 +378,15 @@ class BraveBot(webdriver.Chrome):
             log.info(f"{ss} {rnd.text}")
             safety_counter = 0
             rnd.click()
+            if 'Spotreboval si už všetku svoju energiu, takže toto dobrodužstvo sa teraz končí.' in self.page_source:
+                self.adventure_in_progress = False
+                return
             self.get_player_info()
-            if self.energy < 0.1:
+            if self.energy < 0.1 or 'Si vážne zranený' in self.page_source:
                 healing_result = self.get_healing()
+                if 'Spotreboval si už všetku svoju energiu, takže toto dobrodužstvo sa teraz končí.' in self.page_source:
+                    self.adventure_in_progress = False
+                    return
                 if isinstance(healing_result, bool) and healing_result is True:
                     log.info(f"healing was SUCCESSFUL")
                 elif healing_result is False:
@@ -511,8 +524,11 @@ class BraveBot(webdriver.Chrome):
                 it = it.get_attribute('href')
                 log.info(f"{it}")
                 self.get(it)
+                sleep(1)
+                self.focused_items.remove(focused_item)
+                log.info(f"Removing focused item: {focused_item}")
                 log.info(f"WE bought {it}".center(50, "*"))
-                if not activate:
+                if not activate or 'Stredný liečivý elixír' in item.text:
                     log.info("Activation is skipped...")
                     self.focused_items.remove(focused_item)
                     log.info(f"Removing focused item: {focused_item}")
@@ -537,9 +553,10 @@ class BraveBot(webdriver.Chrome):
                     log.info(f"activation item href: {activation_item}")
                     self.get(activation_item)
                     # now we can remove focused item
-                    self.focused_items.remove(focused_item)
-                    log.info("Removing focused items...")
-                    log.info(f"Focused items: {self.focused_items}")
+                    if focused_item in self.focused_items:
+                        self.focused_items.remove(focused_item)
+                        log.info("Removing focused items again...")
+                        log.info(f"Focused items: {self.focused_items}")
                     self.shop_item(
                         force_shop_data_update=True)  # we need to do shop update after activation
                     return True
@@ -594,38 +611,51 @@ class BraveBot(webdriver.Chrome):
         self.get(self.URL + '/profile')
         self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
         # expand item tab
-        self.find_element(
-            By.PARTIAL_LINK_TEXT, 'Elixíry').click()
         my_items_table = self.find_element(By.ID, "accordion")
-        my_items = my_items_table.find_elements(By.TAG_NAME, 'tr')
-        for my_item in my_items:
-            if type in my_item.text:
-                # (Tvoj inventár: 2 kus(ov))
-                inventory = re.search('Tvoj inventár: (\d+)', my_item.text).group(1)
-                if inventory == 0:
-                    log.warning(f"we do not have enough {type}")
-                    return False
-                log.info(f"HEALING : {my_item.text}")
-                # check timeout:
-                # if 'Čas do konca' in my_item.text:
-                try:
-                    WebDriverWait(self, 1).until(EC.presence_of_element_located((By.ID, "item_cooldown2_2")))
-                    log.warning(f"Healing cooldown...")
-                    healing_countdown = self.find_element(By.ID, "item_cooldown2_2").text
-                    if healing_countdown:
-                        return self._parse_time(healing_countdown)
-                except TimeoutException:
-                    log.info("No healing cooldown...")
-                activation_item = my_item.find_element(By.TAG_NAME, "a")
-                activation_item = activation_item.get_attribute('href')
-                if activation_item:
-                    log.info(f"activation item href: {activation_item}")
-                    self.get(activation_item)
-                    self.get_player_info()
-                    self.get(origin_page)
-                    return True
-        log.error(f"Error in healing method")
-        return False
+        my_items = my_items_table.find_elements(By.TAG_NAME,
+                                                'h3')  # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
+        for items in my_items:
+            if 'Elixíry' not in items.text:
+                continue
+            self.find_element(
+                By.PARTIAL_LINK_TEXT, 'Elixíry').click()
+            my_items_table = self.find_element(By.ID, "accordion")
+            my_items = my_items_table.find_elements(By.TAG_NAME, 'tr')
+            for my_item in my_items:
+                if type in my_item.text:
+                    # (Tvoj inventár: 2 kus(ov))
+                    inventory = re.search('Tvoj inventár: (\d+)', my_item.text).group(1)
+                    if int(inventory) < 2:
+                        log.warning(f"we do not have enough {type}")
+                        if 'Stredný liečivý elixír' not in self.focused_items:
+                            log.info("Adding HEALING to focused items")
+                            self.focused_items.append('Stredný liečivý elixír')
+                        return False
+                    log.info(f"HEALING : {my_item.text}")
+                    # check timeout:
+                    # if 'Čas do konca' in my_item.text:
+                    try:
+                        WebDriverWait(self, 1).until(EC.presence_of_element_located((By.ID, "item_cooldown2_2")))
+                        log.warning(f"Healing cooldown...")
+                        healing_countdown = self.find_element(By.ID, "item_cooldown2_2").text
+                        if healing_countdown:
+                            return self._parse_time(healing_countdown)
+                    except TimeoutException:
+                        log.info("No healing cooldown...")
+                    activation_item = my_item.find_element(By.TAG_NAME, "a")
+                    activation_item = activation_item.get_attribute('href')
+                    if activation_item:
+                        log.info(f"activation item href: {activation_item}")
+                        self.get(activation_item)
+                        self.get_player_info()
+                        self.get(origin_page)
+                        return True
+            log.error(f"Error in healing method")
+            return False
+        log.warning(f"Elixíry not found in inventory")
+        if 'Stredný liečivý elixír' not in self.focused_items:
+            log.info("Adding HEALING to focused items")
+            self.focused_items.append('Stredný liečivý elixír')
 
     def get_inventory_space(self):
         #//*[@id="shop"]/div[2]/div/div[1]/p[2]
@@ -634,6 +664,39 @@ class BraveBot(webdriver.Chrome):
         #:\nPočet voľných miest v Tvojom inventári: 6 (z celkového počtu 19).\nVýb
         content = re.search('.* (\d+) \(.* (\d+)\)', content)
         return content.groups()
+
+    def hideout(self):
+        origin = self.current_url
+        self.get(self.URL + '/hideout/index')
+        self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
+        # hideout_items = self.find_element(By.ID, "fightreport")  # //*[@id="fightreport"]
+        hideout_items = self.find_element(By.XPATH, "//table[contains(@class, 'upgrade')]//following::tbody")
+        hideout_table_items = hideout_items.find_elements(By.TAG_NAME, 'tr')
+        for hideout_table_item in hideout_table_items:
+            if 'Ďalšia úroveň stojí' not in hideout_table_item.text:
+                continue
+            activation_items = hideout_table_item.find_elements(By.TAG_NAME, "a")
+            for activation_item in activation_items:
+                if 'token' not in activation_item.text:
+                    log.info(f"skip {hideout_table_item.text}")
+                    continue
+
+                activation_href = activation_item.get_attribute('href')
+                if not activation_href:
+                    continue
+                """
+                2023-06-23 19:04:29,640 [main] [INFO ] [line:15] Domov Úroveň 1 / 14
+                Ďalšia úroveň stojí 16
+                """
+                log.info(hideout_table_item.text)
+                cost = re.search('Ďalšia úroveň stojí (\d+)', hideout_table_item.text).group(1)
+                if int(cost) > self.gold:
+                    continue
+                log.info(f"BUY hideout upgrade {hideout_items.text} for {cost} gold")
+                self.get(activation_href)
+                self.get(origin)
+                break
+
 
     def end(self):
         pass
@@ -684,6 +747,7 @@ def main():
         MIN_ENERGY = 0.09
         MIN_ENERGY_ADVENTURE = 0.35
         repeat_flag = False
+        no_action_count = 0
         while True:
             try:
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
@@ -704,12 +768,17 @@ def main():
                     bot.get_healing()
                 # ----------------------------------------------------------------------------------------
 
-                if bot.ap[0] == 0:
-                    log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                if bot.ap[0] == 0 or no_action_count > 20:
+                    if no_action_count > 20:
+                        log.warning("No action performed in 20 loops...Going grave")
+                        grave_time = "0:30"
+                    else:
+                        log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                        grave_time = "1:30"
                     bot.get_player_info()
                     if bot.focused_items:
                         bot.shop_item(buy_only=True)
-                    bot.go_grave(w="1:30")
+                    bot.go_grave(w=grave_time)
                     bot.check_if_work_in_progress()
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
@@ -722,6 +791,7 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
+                        no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT")
                         if bot.ap[0] >= 2:
                             bot.go_hunt(target="Mesto")
@@ -731,6 +801,7 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'cavern':
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
+                        no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy} --- we are going for DAEMONS")
                         if bot.ap[0] > 7:
                             bot.go_daemons(r=5)
@@ -740,6 +811,7 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'adventure':
                     while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE and not bot.check_if_work_in_progress():
+                        no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
                         bot.get_player_info()
                         bot.do_adventure()
@@ -747,14 +819,18 @@ def main():
 
                 if bot.ap[0] >= 1 and bot.energy <= MIN_ENERGY and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
-                    if bot.energy <= 0.05:
-                        log.warning("too low energy")
-                        continue
+                    # if bot.energy <= 0.05:
+                    #     log.warning("too low energy")
+                    #     continue
+                    no_action_count = 0
                     if bot.ap[0] >= 2:
                         bot.go_hunt(target="Mesto")
                     if bot.ap[0] >= 1:
                         bot.go_hunt(target="Dedina")
                     _after_action_strategy(bot)
+
+                no_action_count += 1
+                # log.warning(f"{no_action_count}")
 
             except Exception as e:
                 log.error(f"{e} {traceback.format_exc()}")
