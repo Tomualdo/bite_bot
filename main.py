@@ -15,6 +15,7 @@ import datetime
 import re
 import random
 import platform
+import traceback
 
 import my_logger
 import cred
@@ -115,6 +116,8 @@ class BraveBot(webdriver.Chrome):
         usr.send_keys(self.PWD)
         usr.submit()
 
+    def logout(self):
+        self.find_element(By.LINK_TEXT, "Odhlásiť").click()
     def get_countdown(self, typ='grave'):
 
         try:
@@ -752,13 +755,17 @@ def main():
                     _after_action_strategy(bot)
 
             except Exception as e:
-                log.error(f"{e}")
+                log.error(f"{e} {traceback.format_exc()}")
                 err_counter += 1
                 if err_counter >= 10:
                     if repeat_flag:
                         sleep(60)
-                    bot.get_main_page()
-                    bot.login()
+                    try:
+                        bot.logout()
+                        bot.get_main_page()
+                        bot.login()
+                    except Exception as ee:
+                        log.error(f"Exc in EXC: {ee} {traceback.format_exc()}")
                     err_counter = 0
                     repeat_flag = True
 
