@@ -36,6 +36,8 @@ class BraveBot(webdriver.Chrome):
                               'Yasutsuna',
                               'Gorgoth',
                               'Darnam',
+                              'Baan',
+
                               ]
         self.focused_items = []
         self.exception_items = ['Valon']
@@ -715,7 +717,7 @@ def main():
 
                 # ----------------------------------------------------------------------------------------
                 # randomly choose actions: hunt, cavern ...:
-                choice = random.choice(['hunt', 'cavern', 'cavern', 'cavern', 'cavern','cavern', 'cavern', 'adventure'])
+                choice = random.choice(['hunt', 'cavern', 'adventure'])
                 bot.get_player_info()
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
