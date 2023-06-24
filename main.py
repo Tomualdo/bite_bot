@@ -30,6 +30,7 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.free_inventory_space = None
         self.adventure_in_progress = None
         self.last_shop_visit = None
         self.desired_items = list(
@@ -465,6 +466,10 @@ class BraveBot(webdriver.Chrome):
                  f"Focus list {self.focused_items}")
 
     def shop_item(self, force_shop_data_update=False, buy_only=False, activate=True):
+        self.get_inventory_space()
+        if not self.free_inventory_space:
+            log.warning("We have to sell something")
+            self.sell_item()
 
         if not buy_only:
             # check if we need to get shop data
@@ -612,8 +617,8 @@ class BraveBot(webdriver.Chrome):
         self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
         # expand item tab
         my_items_table = self.find_element(By.ID, "accordion")
-        my_items = my_items_table.find_elements(By.TAG_NAME,
-                                                'h3')  # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
+        # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
+        my_items = my_items_table.find_elements(By.TAG_NAME,'h3')
         for items in my_items:
             if 'Elixíry' not in items.text:
                 continue
@@ -663,7 +668,86 @@ class BraveBot(webdriver.Chrome):
         content = self.find_element(By.XPATH, "//*[@id='shop']").text
         #:\nPočet voľných miest v Tvojom inventári: 6 (z celkového počtu 19).\nVýb
         content = re.search('.* (\d+) \(.* (\d+)\)', content)
-        return content.groups()
+
+        self.free_inventory_space = list(map(int, content.groups()))
+        log.info(f"Free inventory space: {self.free_inventory_space}")
+        if self.free_inventory_space[0] == 0:
+            log.warning("You do not have enough space in inventory!")
+            return False
+        return True
+
+    def sell_item(self):
+        origin_page = self.current_url
+        excluded_items = 'Elixíry'
+        self.get(self.URL + '/profile')
+        self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
+        # expand item tab
+        my_items_table = self.find_element(By.ID, "accordion")
+        # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
+        my_items = my_items_table.find_elements(By.TAG_NAME,'h3')
+        item_groups_to_sell = []
+        for item in my_items:
+            if item.text.split(' ')[0] not in self.item_list_profile.values() or item.text.split(' ')[0] in excluded_items:
+                continue
+            print(f"Getting {item.text}")
+            # Brnenie ( 4 )
+            item_count = re.search(' \( (\d+) \)', item.text).group(1)
+            if int(item_count) > 1:
+                log.warning(f"Item: {item.text} > 1 count")
+                item_groups_to_sell.append(item.text.split(' ')[0])
+        # if inventory is not full, but we do not have space to store new items
+        if not item_groups_to_sell and self.free_inventory_space[0] == 0:
+            log.error(f"Inventory is not full,"
+                      f" but we do not have space to store new items -- HIDEOUT upgrade is necessary ")
+            if 'HIDEOUT' not in self.focused_items:
+                log.warning(f"adding HIDEOUT to focused items")
+                self.focused_items.append('HIDEOUT')
+                return
+        if not item_groups_to_sell:
+            log.info("Nothing to sell...")
+            return
+        else:
+            log.warning("Item sell procedure...")
+            # TODO
+            for link, type in self.item_list_profile.items():
+                for item_group in item_groups_to_sell:
+                    if item_group not in type:
+                        continue
+                    #/city/shop/armor/
+                    log.info(f"Getting page {self.URL + link}")
+                    self.get(self.URL + link)
+                    self.find_element(By.PARTIAL_LINK_TEXT, self.item_list_profile[link]).click()
+                    # now we have expanded desired group to sell the item
+                    my_items_table = self.find_element(By.ID, "shopOverview") #//*[@id="shopOverview"]/
+                    my_items = my_items_table.find_elements(By.TAG_NAME, 'tr')
+                    items_to_sell = {}
+                    for my_item in my_items:
+                        # check count and level if is < player
+                        # check also 'Predať' is in search
+                        # iteration must find at least 2 items in inventory and sell last one [-1]
+                        level = re.search('.*Predpoklady: úroveň (\d+)', my_item.text)
+                        inventory_count = re.search('^.*\n.* (\d+) ', my_item.text)
+                        item_name = re.search('^(.*)\n', my_item.text)
+                        if not level and not inventory_count and not 'Predať' in my_item.text:
+                            continue
+                        if int(level.group(1)) < self.level and int(inventory_count.group(1)) >= 1:
+                            log.info(f"We are selling : {my_item.text}")
+                            selling_item = my_item.find_element(By.TAG_NAME, "a")
+                            selling_item_href = selling_item.get_attribute('href')
+                            items_to_sell[item_name.group(1)] = selling_item_href
+                            log.warning(f"{items_to_sell}")
+                            self.get(selling_item_href)
+                            try:
+                                WebDriverWait(self, 3).until_not(EC.staleness_of(selling_item))
+                            except TimeoutException:
+                                pass
+                            return
+                            # log.info(f"Getting page {self.URL + link}")
+                            # self.get(self.URL + link)
+                            # self.find_element(By.PARTIAL_LINK_TEXT, self.item_list_profile[link]).click()                        # if focused_item not in my_item.text:
+                            # continue
+
+
 
     def hideout(self):
         origin = self.current_url
@@ -674,6 +758,10 @@ class BraveBot(webdriver.Chrome):
         hideout_table_items = hideout_items.find_elements(By.TAG_NAME, 'tr')
         for hideout_table_item in hideout_table_items:
             if 'Ďalšia úroveň stojí' not in hideout_table_item.text:
+                continue
+            if 'HIDEOUT' in self.focused_items and 'Domov' in hideout_table_item.text:
+                log.warning(f"Try to buy HIDEOUT upgrade")
+            else:
                 continue
             activation_items = hideout_table_item.find_elements(By.TAG_NAME, "a")
             for activation_item in activation_items:
@@ -695,6 +783,9 @@ class BraveBot(webdriver.Chrome):
                 log.info(f"BUY hideout upgrade {hideout_items.text} for {cost} gold")
                 self.get(activation_href)
                 self.get(origin)
+                if 'HIDEOUT' in self.focused_items and 'Domov' in hideout_table_item.text:
+                    log.warning(f"Remove HIDEOUT from focused items")
+                    self.focused_items.remove('HIDEOUT')
                 break
 
 
@@ -788,6 +879,8 @@ def main():
                 # randomly choose actions: hunt, cavern ...:
                 choice = random.choice(['hunt', 'cavern', 'adventure'])
                 bot.get_player_info()
+                if self.adventure_in_progress:
+                    choice = 'adventure'
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
@@ -799,7 +892,7 @@ def main():
                             bot.go_hunt(target="Dedina")
                         _after_action_strategy(bot)
                 # ----------------------------------------------------------------------------------------
-                elif choice == 'cavern':
+                elif choice == 'cavern' :
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy} --- we are going for DAEMONS")
