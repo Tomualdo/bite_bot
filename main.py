@@ -620,7 +620,7 @@ class BraveBot(webdriver.Chrome):
         self.last_shop_visit = datetime.datetime.now()
         log.info(f"Shop data successfully updated")
 
-    def get_healing(self, type='Stredný liečivý elixír'):
+    def get_healing(self, healing_type='Stredný liečivý elixír'):
         origin_page = self.current_url
         self.get(self.URL + '/profile')
         self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
@@ -636,14 +636,20 @@ class BraveBot(webdriver.Chrome):
             my_items_table = self.find_element(By.ID, "accordion")
             my_items = my_items_table.find_elements(By.TAG_NAME, 'tr')
             for my_item in my_items:
-                if type in my_item.text:
+                if healing_type in my_item.text:
                     # (Tvoj inventár: 2 kus(ov))
-                    inventory = re.search('Tvoj inventár: (\d+)', my_item.text).group(1)
+                    inventory = re.search('Tvoj inventár: (\d+)', my_item.text)
+                    if not inventory:
+                        log.error(f"No inventory count for {healing_type}")
+                        return False
+                    inventory = inventory.group(1)
                     if int(inventory) < 2:
-                        log.warning(f"we do not have enough {type}")
-                        if 'Stredný liečivý elixír' not in self.focused_items:
+                        log.warning(f"we do not have enough {healing_type}")
+                        if healing_type not in self.focused_items:
                             log.info("Adding HEALING to focused items")
-                            self.focused_items.append('Stredný liečivý elixír')
+                            self.focused_items.append(healing_type)
+                    if int(inventory) == 0:
+                        log.warning(f"we do not have ANY Healing: {healing_type}")
                         return False
                     log.info(f"HEALING : {my_item.text}")
                     # check timeout:
@@ -669,9 +675,9 @@ class BraveBot(webdriver.Chrome):
             log.error(f"Error in healing method")
             return False
         log.warning(f"Elixíry not found in inventory")
-        if 'Stredný liečivý elixír' not in self.focused_items:
+        if healing_type not in self.focused_items:
             log.info("Adding HEALING to focused items")
-            self.focused_items.append('Stredný liečivý elixír')
+            self.focused_items.append(healing_type)
 
     def get_inventory_space(self):
         #//*[@id="shop"]/div[2]/div/div[1]/p[2]
