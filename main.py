@@ -528,16 +528,17 @@ class BraveBot(webdriver.Chrome):
                 it = item.find_element(By.TAG_NAME, "a")
                 it = it.get_attribute('href')
                 log.info(f"{it}")
+                # before get we have to decide activation
+                is_healing = 'Stredný liečivý elixír' in item.text
                 self.get(it)
-                sleep(1)
                 self.focused_items.remove(focused_item)
                 log.info(f"Removing focused item: {focused_item}")
-                log.info(f"WE bought {it}".center(50, "*"))
-                if not activate or 'Stredný liečivý elixír' in item.text:
+                log.info(f"WE bought {focused_item}".center(50, "*"))
+                if not activate or is_healing:
                     log.info("Activation is skipped...")
                     self.focused_items.remove(focused_item)
                     log.info(f"Removing focused item: {focused_item}")
-                    return
+                    return True
                 #  --------------- activate new item -------------------
                 log.info(f"ACTIVATE new item".center(50, "-"))
                 self.get(self.URL + '/profile')
@@ -702,10 +703,10 @@ class BraveBot(webdriver.Chrome):
             if 'HIDEOUT' not in self.focused_items:
                 log.warning(f"adding HIDEOUT to focused items")
                 self.focused_items.append('HIDEOUT')
-                return
+                return False
         if not item_groups_to_sell:
             log.info("Nothing to sell...")
-            return
+            return False
         else:
             log.warning("Item sell procedure...")
             # TODO
@@ -731,23 +732,23 @@ class BraveBot(webdriver.Chrome):
                         if not level and not inventory_count and not 'Predať' in my_item.text:
                             continue
                         if int(level.group(1)) < self.level and int(inventory_count.group(1)) >= 1:
+                            log.info(f"checking selling item level {level.group(1)} vs player level {self.level}")
+                            selling_item = my_item.find_elements(By.TAG_NAME, "a")
+                            # distinguish between buy / sell
+                            for st in selling_item:
+                                href = st.get_attribute('href')
+                                if 'sell' not in href:
+                                    continue
+                                # add items to dir
+                                items_to_sell[href] = item_name.group(1)
+                            if len(items_to_sell) <= 1:  # continue only if there are at least 2 items
+                                continue
                             log.info(f"We are selling : {my_item.text}")
-                            selling_item = my_item.find_element(By.TAG_NAME, "a")
-                            selling_item_href = selling_item.get_attribute('href')
-                            items_to_sell[item_name.group(1)] = selling_item_href
-                            log.warning(f"{items_to_sell}")
-                            self.get(selling_item_href)
-                            try:
-                                WebDriverWait(self, 3).until_not(EC.staleness_of(selling_item))
-                            except TimeoutException:
-                                pass
-                            return
-                            # log.info(f"Getting page {self.URL + link}")
-                            # self.get(self.URL + link)
-                            # self.find_element(By.PARTIAL_LINK_TEXT, self.item_list_profile[link]).click()                        # if focused_item not in my_item.text:
-                            # continue
-
-
+                            log.warning(f"FINAL: {list(items_to_sell.values())[-1]} {list(items_to_sell)[-1]}")
+                            self.get(list(items_to_sell)[-1])
+                            return True
+        log.warning("End of sell....")
+        return False
 
     def hideout(self):
         origin = self.current_url
@@ -853,6 +854,8 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 bot.get_player_info()
                 bot.shop_item()
+                bot.sell_item()
+                bot.hideout()
                 if bot.check_if_work_in_progress():
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
@@ -883,7 +886,7 @@ def main():
                 # randomly choose actions: hunt, cavern ...:
                 choice = random.choice(['hunt', 'cavern', 'adventure'])
                 bot.get_player_info()
-                if self.adventure_in_progress:
+                if bot.adventure_in_progress:
                     choice = 'adventure'
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
