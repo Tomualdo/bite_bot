@@ -230,11 +230,15 @@ class BraveBot(webdriver.Chrome):
 
             winner = self.find_element(By.XPATH, "//h3[contains(.,'Víťaz')]").text
             result = self.find_element(By.XPATH, "//*[@id='reportResult'][contains(.,'Koniec')]").text
-            score = re.search(".*\((\d+ : \d+)\).*", result).group(1)
+            score = re.search(".*\((\d+ : \d+)\).*", result)
+            if not score:
+                log.warning(f"{winner}\n{result}")
+                return False
+            score = score.group(1)
             score = list(map(int, score.split(':')))
             self.get_energy()
 
-            log.info(f"{winner:} {score:}    {self.energy:}")
+            log.info(f"{winner:}\n{result}\n{score:}\n{self.energy:}")
             if self.energy < 0.09:
                 log.info("not enough energy")
                 break
@@ -463,7 +467,9 @@ class BraveBot(webdriver.Chrome):
                  f"ap: {self.ap:}\n"
                  f"level: {self.level}\n"
                  f"att: {self.attack}\n"
-                 f"Focus list {self.focused_items}")
+                 f"Focus list {self.focused_items}\n"
+                 f"Adventure: {self.adventure_in_progress}\n"
+                 f"Inventory space: {self.free_inventory_space}")
 
     def shop_item(self, force_shop_data_update=False, buy_only=False, activate=True):
         self.get_inventory_space()
@@ -536,8 +542,9 @@ class BraveBot(webdriver.Chrome):
                 log.info(f"WE bought {focused_item}".center(50, "*"))
                 if not activate or is_healing:
                     log.info("Activation is skipped...")
-                    self.focused_items.remove(focused_item)
-                    log.info(f"Removing focused item: {focused_item}")
+                    if focused_item in self.focused_items:
+                        self.focused_items.remove(focused_item)
+                        log.info(f"Removing focused item: {focused_item}")
                     return True
                 #  --------------- activate new item -------------------
                 log.info(f"ACTIVATE new item".center(50, "-"))
@@ -644,8 +651,10 @@ class BraveBot(webdriver.Chrome):
                         WebDriverWait(self, 1).until(EC.presence_of_element_located((By.ID, "item_cooldown2_2")))
                         log.warning(f"Healing cooldown...")
                         healing_countdown = self.find_element(By.ID, "item_cooldown2_2").text
+                        # TODO
                         if healing_countdown:
                             return self._parse_time(healing_countdown)
+                        return False
                     except TimeoutException:
                         log.info("No healing cooldown...")
                     activation_item = my_item.find_element(By.TAG_NAME, "a")
@@ -709,7 +718,6 @@ class BraveBot(webdriver.Chrome):
             return False
         else:
             log.warning("Item sell procedure...")
-            # TODO
             for link, type in self.item_list_profile.items():
                 for item_group in item_groups_to_sell:
                     if item_group not in type:
@@ -866,8 +874,8 @@ def main():
                     bot.get_healing()
                 # ----------------------------------------------------------------------------------------
 
-                if bot.ap[0] == 0 or no_action_count > 20:
-                    if no_action_count > 20:
+                if bot.ap[0] == 0 or no_action_count > MAX_NO_ACTION():
+                    if no_action_count > MAX_NO_ACTION():
                         log.warning("No action performed in 20 loops...Going grave")
                         grave_time = "0:30"
                     else:
@@ -917,7 +925,7 @@ def main():
                         bot.do_adventure()
                         _after_action_strategy(bot)
 
-                if bot.ap[0] >= 1 and bot.energy <= MIN_ENERGY and not bot.check_if_work_in_progress():
+                if bot.ap[0] >= 1 and MIN_ENERGY >= bot.energy >= 0.03 and not bot.check_if_work_in_progress():
                     log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
                     # if bot.energy <= 0.05:
                     #     log.warning("too low energy")
@@ -930,7 +938,7 @@ def main():
                     _after_action_strategy(bot)
 
                 no_action_count += 1
-                # log.warning(f"{no_action_count}")
+                log.warning(f"{no_action_count}")
 
             except Exception as e:
                 log.error(f"{e} {traceback.format_exc()}")
@@ -946,6 +954,10 @@ def main():
                         log.error(f"Exc in EXC: {ee} {traceback.format_exc()}")
                     err_counter = 0
                     repeat_flag = True
+
+
+def MAX_NO_ACTION():
+    return 15
 
 
 def _after_action_strategy(bot):
