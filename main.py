@@ -759,19 +759,19 @@ class BraveBot(webdriver.Chrome):
         for hideout_table_item in hideout_table_items:
             if 'Ďalšia úroveň stojí' not in hideout_table_item.text:
                 continue
-            if 'HIDEOUT' in self.focused_items and 'Domov' in hideout_table_item.text:
+            elif 'HIDEOUT' in self.focused_items and 'Domov' in hideout_table_item.text:
                 log.warning(f"Try to buy HIDEOUT upgrade")
             else:
-                continue
+                pass
             activation_items = hideout_table_item.find_elements(By.TAG_NAME, "a")
             for activation_item in activation_items:
-                if 'token' not in activation_item.text:
+                activation_href = activation_item.get_attribute('href')
+                # if not activation_href:
+                #     continue
+                if 'token' not in activation_href:
                     log.info(f"skip {hideout_table_item.text}")
                     continue
 
-                activation_href = activation_item.get_attribute('href')
-                if not activation_href:
-                    continue
                 """
                 2023-06-23 19:04:29,640 [main] [INFO ] [line:15] Domov Úroveň 1 / 14
                 Ďalšia úroveň stojí 16
@@ -782,11 +782,15 @@ class BraveBot(webdriver.Chrome):
                     continue
                 log.info(f"BUY hideout upgrade {hideout_items.text} for {cost} gold")
                 self.get(activation_href)
-                self.get(origin)
                 if 'HIDEOUT' in self.focused_items and 'Domov' in hideout_table_item.text:
                     log.warning(f"Remove HIDEOUT from focused items")
                     self.focused_items.remove('HIDEOUT')
-                break
+                self.get(origin)
+                log.info("Hideout BUY successful...")
+                return True
+        log.info("Nothing to upgrade in hideout...")
+        return False
+
 
 
     def end(self):
