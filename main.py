@@ -36,7 +36,8 @@ class BraveBot(webdriver.Chrome):
         self.desired_items = list(
             {
                 'Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar', 'Yasutsuna', 'Gorgoth',
-                'Darnam', 'Baan', 'Kalima', 'Sosul', 'Erenthight', 'Ybor', 'Eriall', 'Rimdil', 'Hyarspex'
+                'Darnam', 'Baan', 'Kalima', 'Sosul', 'Erenthight', 'Ybor', 'Eriall', 'Rimdil', 'Hyarspex', 'Anzuur',
+                'Furios',
             })
         self.focused_items = []
         self.exception_items = ['Valon']
@@ -800,6 +801,13 @@ class BraveBot(webdriver.Chrome):
         log.info("Nothing to upgrade in hideout...")
         return False
 
+    # TODO talents
+    # TODO overview tips
+    """+50% zlata v jaskyni
+    +100% skúsenosti v jaskyni
+    +100% volných misií (maximum)
+    +50% obnovy energie
+    """
 
 
     def end(self):
