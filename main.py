@@ -955,7 +955,7 @@ def main():
                 bot.check_overview()
                 if bot.action_focus:
                     log.info(f"Action in focus: {bot.action_focus}")
-                    choice = bot.action_focus
+                    choice = bot.action_focus[0]
                 if bot.adventure_in_progress:
                     choice = 'adventure'
                 # ----------------------------------------------------------------------------------------
