@@ -911,6 +911,7 @@ def main():
         no_action_count = 0
         while True:
             try:
+                log.info(" START loop ".center(100, "-"))
                 if 'Vlož svoje meno a heslo pre prihlásenie' in bot.page_source:
                     bot.get_main_page()
                     bot.login()
@@ -933,7 +934,7 @@ def main():
 
                 if bot.ap[0] == 0 or no_action_count > MAX_NO_ACTION():
                     if no_action_count > MAX_NO_ACTION():
-                        log.warning("No action performed in 20 loops...Going grave")
+                        log.warning("No action performed in 10 loops...Going grave")
                         grave_time = "0:30"
                     else:
                         log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
@@ -954,6 +955,7 @@ def main():
                 bot.check_overview()
                 if bot.action_focus:
                     log.info(f"Action in focus: {bot.action_focus}")
+                    choice = bot.action_focus
                 if bot.adventure_in_progress:
                     choice = 'adventure'
                 # ----------------------------------------------------------------------------------------
@@ -996,6 +998,7 @@ def main():
 
                 no_action_count += 1
                 log.warning(f"{no_action_count}")
+                log.info(" end loop ".center(100, "-"))
 
             except Exception as e:
                 log.error(f"{e} {traceback.format_exc()}")
@@ -1014,7 +1017,7 @@ def main():
 
 
 def MAX_NO_ACTION():
-    return 15
+    return 10
 
 
 def _after_action_strategy(bot):
