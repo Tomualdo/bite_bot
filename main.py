@@ -928,8 +928,10 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 # try to heal up
                 bot.get_player_info()
-                if bot.ap[0] >= 3 and bot.energy < 0.1:
+                if bot.energy < 0.2:
+                    log.warning("Low energy...TRY ro heal...")
                     bot.get_healing()
+                    bot.get_player_info()
                 # ----------------------------------------------------------------------------------------
 
                 if bot.ap[0] == 0 or no_action_count > MAX_NO_ACTION():
