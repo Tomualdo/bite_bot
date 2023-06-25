@@ -30,6 +30,7 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.action_focus = []
         self.free_inventory_space = None
         self.adventure_in_progress = None
         self.last_shop_visit = None
@@ -37,7 +38,7 @@ class BraveBot(webdriver.Chrome):
             {
                 'Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar', 'Yasutsuna', 'Gorgoth',
                 'Darnam', 'Baan', 'Kalima', 'Sosul', 'Erenthight', 'Ybor', 'Eriall', 'Rimdil', 'Hyarspex', 'Anzuur',
-                'Furios',
+                'Furios', 'Korgan', 'Void', 'Hexxen', 'Nagash', 'Korgan', 'Tabar'
             })
         self.focused_items = []
         self.exception_items = ['Valon']
@@ -121,6 +122,7 @@ class BraveBot(webdriver.Chrome):
 
     def logout(self):
         self.find_element(By.LINK_TEXT, "Odhlásiť").click()
+
     def get_countdown(self, typ='grave'):
 
         try:
@@ -214,11 +216,15 @@ class BraveBot(webdriver.Chrome):
         for repeat in range(r):
             self.get(self.URL + "/city/grotte")
             self.get_player_info()
-            if self.energy< 0.09 or self.ap[0] == 0:
-                log.warn("not enough power to fight")
+            if self.energy < 0.09:
+                self.get_healing()
+                self.get(self.URL + "/city/grotte")
+                self.get_player_info()
+            if self.energy < 0.09 or self.ap[0] == 0:
+                log.warning("not enough power to fight")
                 break
             if level is None:
-                level = random.choice([1,2,2,3,3,3])
+                level = random.choice([1, 2, 3])
             if level is None or level == 1:
                 log.info("Easy Demon")
                 self.find_element(By.XPATH, "//input[contains(@value,'Ľahký')]").click()
@@ -529,23 +535,28 @@ class BraveBot(webdriver.Chrome):
             shop = self.find_element(By.ID, "shopOverview")
             shop_items = shop.find_elements(By.TAG_NAME, 'tr')
             for item in shop_items:
-                if focused_item not in item.text:
+                # extract exact name of item
+                item_name = re.search('(^.*)\n', item.text)
+                if not item_name:
                     continue
-                log.info(f"We buying : {item.text}")
+                item_name = item_name.group(1)
+                if focused_item != item_name:
+                    continue
+                log.info(f"We buying : {item_name}")
                 it = item.find_element(By.TAG_NAME, "a")
                 it = it.get_attribute('href')
                 log.info(f"{it}")
                 # before get we have to decide activation
-                is_healing = 'Stredný liečivý elixír' in item.text
+                is_healing = 'Stredný liečivý elixír' in item_name
                 self.get(it)
                 self.focused_items.remove(focused_item)
                 log.info(f"Removing focused item: {focused_item}")
                 log.info(f"WE bought {focused_item}".center(50, "*"))
-                if not activate or is_healing:
+                if is_healing:
                     log.info("Activation is skipped...")
-                    if focused_item in self.focused_items:
-                        self.focused_items.remove(focused_item)
-                        log.info(f"Removing focused item: {focused_item}")
+                    # if focused_item in self.focused_items:
+                    #     self.focused_items.remove(focused_item)
+                    #     log.info(f"Removing focused item: {focused_item}")
                     return True
                 #  --------------- activate new item -------------------
                 log.info(f"ACTIVATE new item".center(50, "-"))
@@ -627,7 +638,7 @@ class BraveBot(webdriver.Chrome):
         # expand item tab
         my_items_table = self.find_element(By.ID, "accordion")
         # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
-        my_items = my_items_table.find_elements(By.TAG_NAME,'h3')
+        my_items = my_items_table.find_elements(By.TAG_NAME, 'h3')
         for items in my_items:
             if 'Elixíry' not in items.text:
                 continue
@@ -644,13 +655,24 @@ class BraveBot(webdriver.Chrome):
                         return False
                     inventory = inventory.group(1)
                     if int(inventory) < 2:
-                        log.warning(f"we do not have enough {healing_type}")
+                        log.warning(f"we have only 1 {healing_type}. We want to buy more")
                         if healing_type not in self.focused_items:
                             log.info("Adding HEALING to focused items")
                             self.focused_items.append(healing_type)
+                        # We do not need to buy immediately ...
+                        # if not self.shop_item(buy_only=True):
+                        #     return False
+                        # else:
+                        #     self.get_healing()
                     if int(inventory) == 0:
                         log.warning(f"we do not have ANY Healing: {healing_type}")
-                        return False
+                        if healing_type not in self.focused_items:
+                            log.info("Adding HEALING to focused items")
+                            self.focused_items.append(healing_type)
+                        if not self.shop_item(buy_only=True):
+                            return False
+                        else:
+                            self.get_healing()
                     log.info(f"HEALING : {my_item.text}")
                     # check timeout:
                     # if 'Čas do konca' in my_item.text:
@@ -672,15 +694,25 @@ class BraveBot(webdriver.Chrome):
                         self.get_player_info()
                         self.get(origin_page)
                         return True
-            log.error(f"Error in healing method")
-            return False
+            log.error(f"Error in healing method or no potions in inventory")
+            log.warning(f"we do not have ANY Healing: {healing_type}")
+            if healing_type not in self.focused_items:
+                log.info("Adding HEALING to focused items")
+                self.focused_items.append(healing_type)
+            if not self.shop_item(buy_only=True):
+                return False
+            else:
+                log.info("We bought healing potion... now try to use it")
+                return self.get_healing()
+                # return True
+
         log.warning(f"Elixíry not found in inventory")
         if healing_type not in self.focused_items:
             log.info("Adding HEALING to focused items")
             self.focused_items.append(healing_type)
 
     def get_inventory_space(self):
-        #//*[@id="shop"]/div[2]/div/div[1]/p[2]
+        # //*[@id="shop"]/div[2]/div/div[1]/p[2]
         self.get(self.URL + "/city/shop")
         content = self.find_element(By.XPATH, "//*[@id='shop']").text
         #:\nPočet voľných miest v Tvojom inventári: 6 (z celkového počtu 19).\nVýb
@@ -701,10 +733,11 @@ class BraveBot(webdriver.Chrome):
         # expand item tab
         my_items_table = self.find_element(By.ID, "accordion")
         # //*[@id="accordion"]/div[5]/table/tbody/tr[2]/td[2]/div/div/a
-        my_items = my_items_table.find_elements(By.TAG_NAME,'h3')
+        my_items = my_items_table.find_elements(By.TAG_NAME, 'h3')
         item_groups_to_sell = []
         for item in my_items:
-            if item.text.split(' ')[0] not in self.item_list_profile.values() or item.text.split(' ')[0] in excluded_items:
+            if item.text.split(' ')[0] not in self.item_list_profile.values() or item.text.split(' ')[
+                0] in excluded_items:
                 continue
             print(f"Getting {item.text}")
             # Brnenie ( 4 )
@@ -729,12 +762,12 @@ class BraveBot(webdriver.Chrome):
                 for item_group in item_groups_to_sell:
                     if item_group not in type:
                         continue
-                    #/city/shop/armor/
+                    # /city/shop/armor/
                     log.info(f"Getting page {self.URL + link}")
                     self.get(self.URL + link)
                     self.find_element(By.PARTIAL_LINK_TEXT, self.item_list_profile[link]).click()
                     # now we have expanded desired group to sell the item
-                    my_items_table = self.find_element(By.ID, "shopOverview") #//*[@id="shopOverview"]/
+                    my_items_table = self.find_element(By.ID, "shopOverview")  # //*[@id="shopOverview"]/
                     my_items = my_items_table.find_elements(By.TAG_NAME, 'tr')
                     items_to_sell = {}
                     for my_item in my_items:
@@ -808,13 +841,23 @@ class BraveBot(webdriver.Chrome):
         return False
 
     # TODO talents
-    # TODO overview tips
-    """+50% zlata v jaskyni
-    +100% skúsenosti v jaskyni
-    +100% volných misií (maximum)
-    +50% obnovy energie
-    """
 
+    def check_overview(self):
+        self.action_focus = []
+        if '/profile/index' not in self.current_url:
+            self.get(self.URL + '/profile/index')
+        # //*[@id="gameEvent"]/div[2]/div/ul/li[1]/text()
+        overview = self.find_element(By.XPATH, "//*[@id='gameEvent']//ul")
+        log.info(f"Overview:\n{overview.text}")
+        if 'jaskyni' in overview.text:
+            if 'cavern' not in self.action_focus:
+                self.action_focus.append('cavern')
+        # TODO overview tips
+        """+50% zlata v jaskyni
+        +100% skúsenosti v jaskyni
+        +100% volných misií (maximum)
+        +50% obnovy energie
+        """
 
     def end(self):
         pass
@@ -894,7 +937,7 @@ def main():
                         grave_time = "0:30"
                     else:
                         log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
-                        grave_time = "1:30"
+                        grave_time = "0:30"
                     bot.get_player_info()
                     if bot.focused_items:
                         bot.shop_item(buy_only=True)
@@ -908,6 +951,9 @@ def main():
                 # randomly choose actions: hunt, cavern ...:
                 choice = random.choice(['hunt', 'cavern', 'adventure'])
                 bot.get_player_info()
+                bot.check_overview()
+                if bot.action_focus:
+                    log.info(f"Action in focus: {bot.action_focus}")
                 if bot.adventure_in_progress:
                     choice = 'adventure'
                 # ----------------------------------------------------------------------------------------
@@ -921,14 +967,11 @@ def main():
                             bot.go_hunt(target="Dedina")
                         _after_action_strategy(bot)
                 # ----------------------------------------------------------------------------------------
-                elif choice == 'cavern' :
+                elif choice == 'cavern':
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy} --- we are going for DAEMONS")
-                        if bot.ap[0] > 7:
-                            bot.go_daemons(r=5)
-                        else:
-                            bot.go_daemons()
+                        bot.go_daemons()
                         _after_action_strategy(bot)
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'adventure':
