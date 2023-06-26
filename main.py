@@ -16,6 +16,7 @@ import re
 import random
 import platform
 import traceback
+import pickle
 
 import my_logger
 import cred
@@ -38,7 +39,7 @@ class BraveBot(webdriver.Chrome):
             {
                 'Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar', 'Yasutsuna', 'Gorgoth',
                 'Darnam', 'Baan', 'Kalima', 'Sosul', 'Erenthight', 'Ybor', 'Eriall', 'Rimdil', 'Hyarspex', 'Anzuur',
-                'Furios', 'Korgan', 'Void', 'Hexxen', 'Nagash', 'Korgan', 'Tabar'
+                'Furios', 'Korgan', 'Void', 'Hexxen', 'Nagash', 'Korgan', 'Tabar', 'Chamkaq'
             })
         self.focused_items = []
         self.exception_items = ['Valon']
@@ -120,6 +121,7 @@ class BraveBot(webdriver.Chrome):
         usr = self.find_element(By.NAME, "pass")
         usr.send_keys(self.PWD)
         usr.submit()
+        self.load_focused_items()
 
     def logout(self):
         self.find_element(By.LINK_TEXT, "Odhlásiť").click()
@@ -269,9 +271,9 @@ class BraveBot(webdriver.Chrome):
             return False
         for repeat in range(r):
             self.get(self.URL + "/robbery")
-            health = self.get_energy()
-            if health[0] / health[1] > 0.20:
-                self.select_hunt()
+            self.get_energy()
+            if self.energy > 0.20:
+
                 self.find_element(By.XPATH, "//input[contains(@name,'optionsearch')]").click()
 
                 # target info
@@ -281,9 +283,9 @@ class BraveBot(webdriver.Chrome):
                 attack_btn = self.find_element(By.XPATH, "//button[contains(@type,'submit')]").submit()
                 winner = self.find_element(By.XPATH, "//h3[contains(.,'Víťaz')]")
                 if self.USER not in winner.text:
-                    log.info(f"Loose aganist lvl {level}   health: {health[0]}")
+                    log.info(f"Loose aganist lvl {level}   health: {self.energy}")
                 else:
-                    log.info(f"Win aganist lvl {level}    health: {health[0]}")
+                    log.info(f"Win aganist lvl {level}    health: {self.energy}")
             else:
                 log.info("too low energy")
                 break
@@ -525,9 +527,8 @@ class BraveBot(webdriver.Chrome):
                     and self.level == self.shop_item_list[desired_item]['level'] \
                     and self.shop_item_list[desired_item]['inventory'] == 0 \
                     and desired_item not in self.focused_items:
-                self.focused_items.append(
-                    desired_item)  # We want this item so other shopping activities have to be suppressed
-                log.info(f"New focused item {desired_item}")
+                # We want this item so other shopping activities have to be suppressed
+                self._add_focused_and_pickle(desired_item)
 
         # TODO: remove if in focused olready own
         # if my_item in self.focused_items:
@@ -558,14 +559,10 @@ class BraveBot(webdriver.Chrome):
                 # before get we have to decide activation
                 is_healing = 'Stredný liečivý elixír' in item_name
                 self.get(it)
-                self.focused_items.remove(focused_item)
-                log.info(f"Removing focused item: {focused_item}")
+                self._remove_focused_item_and_pickle(focused_item)
                 log.info(f"WE bought {focused_item}".center(50, "*"))
                 if is_healing:
                     log.info("Activation is skipped...")
-                    # if focused_item in self.focused_items:
-                    #     self.focused_items.remove(focused_item)
-                    #     log.info(f"Removing focused item: {focused_item}")
                     return True
                 #  --------------- activate new item -------------------
                 log.info(f"ACTIVATE new item".center(50, "-"))
@@ -587,13 +584,35 @@ class BraveBot(webdriver.Chrome):
                     log.info(f"activation item href: {activation_item}")
                     self.get(activation_item)
                     # now we can remove focused item
-                    if focused_item in self.focused_items:
-                        self.focused_items.remove(focused_item)
-                        log.info("Removing focused items again...")
-                        log.info(f"Focused items: {self.focused_items}")
+                    self._remove_focused_item_and_pickle(focused_item)
                     self.shop_item(
                         force_shop_data_update=True)  # we need to do shop update after activation
                     return True
+
+    def _remove_focused_item_and_pickle(self, focused_item):
+        if focused_item not in self.focused_items:
+            log.warning(f"{focused_item} already removed")
+            return
+        self.focused_items.remove(focused_item)
+        log.info(f"Removing focused item: {focused_item}")
+        with open('focused_items', 'wb') as f:
+            pickle.dump(self.focused_items, f)
+
+    def _add_focused_and_pickle(self, desired_item):
+        self.focused_items.append(desired_item)
+        log.info(f"New focused item {desired_item}")
+        with open('focused_items', 'wb') as f:
+            pickle.dump(self.focused_items, f)
+            log.info(f"Item {desired_item} pickled...")
+
+    def load_focused_items(self):
+        if not os.path.isfile('focused_items'):
+            log.warning(f"No restore file found...")
+            return
+        with open('focused_items', 'rb') as f:
+            self.focused_items = pickle.load(f)
+            log.info(f"Focused items restored: {self.focused_items}")
+
 
     def _get_shop_data(self):
         log.info("Getting shop data...")
@@ -667,17 +686,14 @@ class BraveBot(webdriver.Chrome):
                         log.warning(f"we have only 1 {healing_type}. We want to buy more")
                         if healing_type not in self.focused_items:
                             log.info("Adding HEALING to focused items")
-                            self.focused_items.append(healing_type)
-                        # We do not need to buy immediately ...
-                        # if not self.shop_item(buy_only=True):
-                        #     return False
-                        # else:
-                        #     self.get_healing()
+                            # self.focused_items.append(healing_type)
+                            self._add_focused_and_pickle(healing_type)
+
                     if int(inventory) == 0:
                         log.warning(f"we do not have ANY Healing: {healing_type}")
                         if healing_type not in self.focused_items:
                             log.info("Adding HEALING to focused items")
-                            self.focused_items.append(healing_type)
+                            self._add_focused_and_pickle(healing_type)
                         if not self.shop_item(buy_only=True):
                             return False
                         else:
@@ -707,7 +723,7 @@ class BraveBot(webdriver.Chrome):
             log.warning(f"we do not have ANY Healing: {healing_type}")
             if healing_type not in self.focused_items:
                 log.info("Adding HEALING to focused items")
-                self.focused_items.append(healing_type)
+                self._add_focused_and_pickle(healing_type)
             if not self.shop_item(buy_only=True):
                 return False
             else:
@@ -718,7 +734,7 @@ class BraveBot(webdriver.Chrome):
         log.warning(f"Elixíry not found in inventory")
         if healing_type not in self.focused_items:
             log.info("Adding HEALING to focused items")
-            self.focused_items.append(healing_type)
+            self._add_focused_and_pickle(healing_type)
 
     def get_inventory_space(self):
         # //*[@id="shop"]/div[2]/div/div[1]/p[2]
@@ -760,7 +776,7 @@ class BraveBot(webdriver.Chrome):
                       f" but we do not have space to store new items -- HIDEOUT upgrade is necessary ")
             if 'HIDEOUT' not in self.focused_items:
                 log.warning(f"adding HIDEOUT to focused items")
-                self.focused_items.append('HIDEOUT')
+                self._add_focused_and_pickle('HIDEOUT')
                 return False
         if not item_groups_to_sell:
             log.info("Nothing to sell...")
@@ -842,14 +858,12 @@ class BraveBot(webdriver.Chrome):
                 self.get(activation_href)
                 if 'HIDEOUT' in self.focused_items and 'Domov' in hideout_table_item.text:
                     log.warning(f"Remove HIDEOUT from focused items")
-                    self.focused_items.remove('HIDEOUT')
+                    self._remove_focused_item_and_pickle('HIDEOUT')
                 self.get(origin)
                 log.info("Hideout BUY successful...")
                 return True
         log.info("Nothing to upgrade in hideout...")
         return False
-
-    # TODO talents
 
     def check_overview(self):
         self.action_focus = []
@@ -867,6 +881,25 @@ class BraveBot(webdriver.Chrome):
         +100% volných misií (maximum)
         +50% obnovy energie
         """
+
+    def talents(self):
+        # TODO
+        self.get(self.URL + '/profile/talents')
+        self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        self.execute_script("window.scrollTo(document.body.scrollHeight, 0);")
+        # get price for point
+        # //*[@id="talentsOptions"]/tbody/tr[2]/td[3]/table/tbody/tr[1]/td[3]/text()
+        talent_options = self.find_elements(By.XPATH, "//*[@id='talentsOptions']//tbody")
+
+    def get_energy_potion(self):
+        #//*[@id="items"]/div[2]/div/div/h2[1]
+        self.get(self.URL + '/profile')
+        self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
+        # expand item tab
+        my_active_items_table = self.find_elements(By.XPATH, "//*[@id='items']//h2")
+        for active in my_active_items_table:
+            if 'Aktívne' not in active:
+                continue
 
     def end(self):
         pass

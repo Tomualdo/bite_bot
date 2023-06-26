@@ -5,4 +5,5 @@ __pycache__
 LICENSE*
 chromedriver*
 env
+focused_items
 
