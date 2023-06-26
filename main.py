@@ -187,15 +187,14 @@ class BraveBot(webdriver.Chrome):
     def check_if_work_in_progress(self):
         log.info(f"Check if we are having work in progres ")
 
+        self.get(self.URL + "/city/graveyard")
         if 'adventure' in self.page_source:
             log.info(f"We have unfinished adventure... ")
             self.adventure_in_progress = True
 
         if self.adventure_in_progress:
             log.warning("Adventure in progress...")
-            return True
-
-        self.get(self.URL + "/city/graveyard")
+            return False
         self.t_delta = None
         if 'working' in self.current_url:
             log.info(f"Work in progress...")
@@ -966,7 +965,7 @@ def main():
                 bot.get_player_info()
                 bot.check_overview()
                 if bot.adventure_in_progress:
-                    log.info("Adventure in progress...")
+                    log.info("Adventure in progress... SELECT ADVENTURE")
                     choice = 'adventure'
                 elif bot.action_focus:
                     log.info(f"Action in focus: {bot.action_focus}")
@@ -979,7 +978,7 @@ def main():
                     choice = 'hunt'
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
-                    if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
+                    if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY:
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT")
                         if bot.level > 30:
@@ -989,21 +988,21 @@ def main():
                         _after_action_strategy(bot)
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'cavern':
-                    if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
+                    if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY:
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy} --- we are going for DAEMONS")
                         bot.go_daemons()
-                        _after_action_strategy(bot)
+                        _after_action_strategy(bot)and not bot.check_if_work_in_progress()
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'adventure':
-                    while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE and not bot.check_if_work_in_progress():
+                    while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE:
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
                         bot.get_player_info()
                         bot.do_adventure()
                         _after_action_strategy(bot)
 
-                if bot.ap[0] >= 1 and MIN_ENERGY >= bot.energy >= 0.03 and not bot.check_if_work_in_progress():
+                if bot.ap[0] >= 1 and MIN_ENERGY >= bot.energy >= 0.03:
                     log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT with low energy")
                     # if bot.energy <= 0.05:
                     #     log.warning("too low energy")
