@@ -109,6 +109,7 @@ class BraveBot(webdriver.Chrome):
     def get_main_page(self, URL=None):
         if not URL:
             URL = self.URL
+        log.info(f"Going to {URL + '/profile'} page")
         self.get(URL + "/profile")
 
     def login(self):
@@ -163,6 +164,7 @@ class BraveBot(webdriver.Chrome):
         return self.energy
 
     def go_hunt(self, target='Farma', r=1):
+        log.warning("HUNT".center(50, "-"))
         self.get(self.URL + "/robbery")
         if self.check_if_work_in_progress():
             return False
@@ -210,6 +212,7 @@ class BraveBot(webdriver.Chrome):
             return True
 
     def go_daemons(self, r=1, level=None):
+        log.warning("DAEMONS".center(50, "-"))
         self.get(self.URL + "/city/grotte")
         if self.check_if_work_in_progress():
             return False
@@ -286,6 +289,7 @@ class BraveBot(webdriver.Chrome):
         for repeat in range(r):
             if "profile/index" not in self.current_url:
                 self.get_main_page()
+                self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             self.find_element(By.LINK_TEXT, "Schopnosti").click()
             try:
                 number_of_stats = 4  # we do not need 5 -> charisma is not necessary
@@ -333,7 +337,7 @@ class BraveBot(webdriver.Chrome):
         return int(gold)
 
     def do_adventure(self, min_energy=0.35, finish=False):
-
+        log.warning("ADVENTURE".center(50, "-"))
         if finish:
             if 'Pokračovať (3 AB)' in self.page_source:
                 log.info(f"low energy {self.energy} we have to end adventure")
@@ -920,6 +924,7 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 bot.get_player_info()
                 bot.shop_item()
+                bot.stats_increase()
                 bot.sell_item()
                 bot.hideout()
                 if bot.check_if_work_in_progress():
@@ -929,7 +934,7 @@ def main():
                 # try to heal up
                 bot.get_player_info()
                 if bot.energy < 0.2:
-                    log.warning("Low energy...TRY ro heal...")
+                    log.warning("Low energy...TRY ro heal...".center(50, "-"))
                     bot.get_healing()
                     bot.get_player_info()
                 # ----------------------------------------------------------------------------------------
