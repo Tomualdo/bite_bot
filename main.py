@@ -213,6 +213,7 @@ class BraveBot(webdriver.Chrome):
             work_time = self.find_element(By.XPATH, "//select[contains(@name,'workDuration')]")
             work_time.send_keys(w)
             self.find_element(By.XPATH, "//input[contains(@name,'dowork')]").submit()
+            log.warning(" Working... ".center(100, "*"))
             return True
 
     def go_daemons(self, r=1, level=None):
@@ -928,9 +929,9 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 bot.get_player_info()
                 bot.shop_item()
-                bot.stats_increase()
                 bot.sell_item()
-                bot.hideout()
+                if not bot.focused_items:
+                    bot.hideout()
                 if bot.check_if_work_in_progress():
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
@@ -947,9 +948,16 @@ def main():
                     if no_action_count > MAX_NO_ACTION():
                         log.warning("No action performed in 10 loops...Going grave")
                         grave_time = "0:30"
-                    else:
-                        log.info(f"going grave - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                    elif bot.energy >= 0.5:
+                        log.info(f"going grave SHORT - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
                         grave_time = "0:30"
+                    elif 0.5 > bot.energy > 0.3:
+                        log.info(f"going grave MID - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                        grave_time = "1:30"
+                    else:
+                        log.info(f"going grave LONG - AP: {bot.ap[0]:} ENERGY: {bot.energy:}")
+                        grave_time = "2:30"
+
                     bot.get_player_info()
                     if bot.focused_items:
                         bot.shop_item(buy_only=True)
@@ -961,7 +969,7 @@ def main():
 
                 # ----------------------------------------------------------------------------------------
                 # randomly choose actions: hunt, cavern ...:
-                choice = random.choice(['hunt', 'cavern', 'adventure'])
+                choice = random.choice(['hunt', 'cavern', 'cavern', 'adventure', 'adventure', 'adventure'])
                 bot.get_player_info()
                 bot.check_overview()
                 if bot.adventure_in_progress:
@@ -997,6 +1005,7 @@ def main():
                         _after_action_strategy(bot)and not bot.check_if_work_in_progress()
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'adventure':
+                    log.info("Adventure wos chosen")
                     while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE:
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
