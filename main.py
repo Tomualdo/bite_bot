@@ -970,6 +970,8 @@ def main():
                 elif bot.action_focus:
                     log.info(f"Action in focus: {bot.action_focus}")
                     choice = bot.action_focus[0]
+                elif choice == 'adventure':
+                    pass
                 elif bot.ap[0] / bot.ap[1] < bot.energy:
                     log.info(f"we have more energy {bot.energy} than ap {bot.ap[0] / bot.ap[1]}...")
                     choice = 'cavern'
