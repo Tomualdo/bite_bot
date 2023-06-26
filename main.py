@@ -960,11 +960,15 @@ def main():
                 choice = random.choice(['hunt', 'cavern', 'adventure'])
                 bot.get_player_info()
                 bot.check_overview()
-                if bot.action_focus:
+                if bot.adventure_in_progress:
+                    log.info("Adventure in progress...")
+                    choice = 'adventure'
+                elif bot.action_focus:
                     log.info(f"Action in focus: {bot.action_focus}")
                     choice = bot.action_focus[0]
-                if bot.adventure_in_progress:
-                    choice = 'adventure'
+                elif bot.ap[0] / bot.ap[1] < bot.energy:
+                    log.info(f"we have more energy {bot.energy} than ap {bot.ap[0] / bot.ap[1]}...")
+                    choice = 'cavern'
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
