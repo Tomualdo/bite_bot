@@ -412,10 +412,13 @@ class BraveBot(webdriver.Chrome):
                     return
                 if isinstance(healing_result, bool) and healing_result is True:
                     log.info(f"healing was SUCCESSFUL")
+                    return
                 elif healing_result is False:
                     log.info(f"healing FAILED")
+                    return
                 elif isinstance(healing_result, datetime.timedelta):
                     log.info(f"healing cooldown during adventure")
+                    return
             if self.energy < 0.1:
                 log.info(f"low energy during adventure :{self.energy} we have to end adventure")
                 self.get(self.URL + "/city/adventure/decision/36")
