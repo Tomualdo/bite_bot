@@ -186,9 +186,14 @@ class BraveBot(webdriver.Chrome):
 
     def check_if_work_in_progress(self):
         log.info(f"Check if we are having work in progres ")
+
+        if 'adventure' in self.page_source:
+            log.info(f"We have unfinished adventure... ")
+            self.adventure_in_progress = True
+
         if self.adventure_in_progress:
             log.warning("Adventure in progress...")
-            return False
+            return True
 
         self.get(self.URL + "/city/graveyard")
         self.t_delta = None
@@ -969,14 +974,17 @@ def main():
                 elif bot.ap[0] / bot.ap[1] < bot.energy:
                     log.info(f"we have more energy {bot.energy} than ap {bot.ap[0] / bot.ap[1]}...")
                     choice = 'cavern'
+                else:
+                    log.info(f"we have LESS energy {bot.energy} than ap {bot.ap[0] / bot.ap[1]}...")
+                    choice = 'hunt'
                 # ----------------------------------------------------------------------------------------
                 if choice == 'hunt':
                     if bot.ap[0] >= 1 and bot.energy >= MIN_ENERGY and not bot.check_if_work_in_progress():
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 1 e: {bot.energy}--- we are going for HUNT")
-                        if bot.ap[0] >= 2:
+                        if bot.level > 30:
                             bot.go_hunt(target="Mesto")
-                        if bot.ap[0] >= 1:
+                        else:
                             bot.go_hunt(target="Dedina")
                         _after_action_strategy(bot)
                 # ----------------------------------------------------------------------------------------
