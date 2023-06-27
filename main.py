@@ -873,7 +873,11 @@ class BraveBot(webdriver.Chrome):
         if '/profile/index' not in self.current_url:
             self.get(self.URL + '/profile/index')
         # //*[@id="gameEvent"]/div[2]/div/ul/li[1]/text()
-        overview = self.find_element(By.XPATH, "//*[@id='gameEvent']//ul")
+        overview = self.find_elements(By.XPATH, "//*[@id='gameEvent']//ul")
+        if not overview:
+            log.warning("No game events active...")
+            return
+        overview = overview[0]
         log.info(f"Overview:\n{overview.text}")
         if 'jaskyni' in overview.text:
             if 'cavern' not in self.action_focus:
