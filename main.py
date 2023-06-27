@@ -1048,6 +1048,7 @@ def main():
                 bot.sell_item()
                 if not bot.focused_items:
                     bot.hideout()
+                    bot.talents()
                 if bot.check_if_work_in_progress():
                     log.info(f"working for {bot.t_delta.seconds} seconds")
                     sleep(bot.t_delta.seconds)
