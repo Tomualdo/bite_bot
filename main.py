@@ -31,6 +31,7 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.healing_cooldown = datetime.datetime.now()
         self.action_focus = []
         self.free_inventory_space = None
         self.adventure_in_progress = None
@@ -668,6 +669,11 @@ class BraveBot(webdriver.Chrome):
         log.info(f"Shop data successfully updated")
 
     def get_healing(self, healing_type='Stredný liečivý elixír'):
+        if datetime.datetime.now() <= self.healing_cooldown:
+            log.warning(f"Healing available after {self.healing_cooldown}"
+                        f" or at {datetime.datetime.now() + self.healing_cooldown}")
+            return False
+
         origin_page = self.current_url
         self.get(self.URL + '/profile')
         self.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down
@@ -709,16 +715,20 @@ class BraveBot(webdriver.Chrome):
                     log.info(f"HEALING : {my_item.text}")
                     # check timeout:
                     # if 'Čas do konca' in my_item.text:
-                    try:
-                        WebDriverWait(self, 1).until(EC.presence_of_element_located((By.ID, "item_cooldown2_2")))
+                    cooldowns = self.find_elements(By.ID, "item_cooldown2_2")
+                    for cooldown in cooldowns:
+                        cooldown_text = re.search('(\d+:\d+:\d+)', cooldown.text)
+                        if not cooldown_text:
+                            continue
                         log.warning(f"Healing cooldown...")
-                        healing_countdown = self.find_element(By.ID, "item_cooldown2_2").text
-                        # TODO
-                        if healing_countdown:
-                            return self._parse_time(healing_countdown)
+                        healing_cooldown = self._parse_time(cooldown_text.group(1))
+                        log.info(f"Remaining time {self.t_delta} "
+                                 f"until {(datetime.datetime.now() + healing_cooldown).strftime('%H:%M:%S')}")
+                        self.healing_cooldown = datetime.datetime.now() + healing_cooldown
+                        # datetime.datetime.now() <= healing_cooldown # we dont need to check healing
                         return False
-                    except TimeoutException:
-                        log.info("No healing cooldown...")
+
+                    log.info("No healing cooldown...")
                     activation_item = my_item.find_element(By.TAG_NAME, "a")
                     activation_item = activation_item.get_attribute('href')
                     if activation_item:
