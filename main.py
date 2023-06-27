@@ -221,6 +221,7 @@ class BraveBot(webdriver.Chrome):
         if not self.check_if_work_in_progress():
             if self.adventure_in_progress:
                 self.do_adventure(finish=True)
+                self.get(self.URL + "/city/graveyard")
             work_time = self.find_element(By.XPATH, "//select[contains(@name,'workDuration')]")
             work_time.send_keys(w)
             self.find_element(By.XPATH, "//input[contains(@name,'dowork')]").submit()
