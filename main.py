@@ -672,8 +672,7 @@ class BraveBot(webdriver.Chrome):
 
     def get_healing(self, healing_type='Stredný liečivý elixír'):
         if datetime.datetime.now() <= self.healing_cooldown:
-            log.warning(f"Healing available after {self.healing_cooldown}"
-                        f" or at {datetime.datetime.now() + self.healing_cooldown}")
+            log.warning(f"Healing available at {self.healing_cooldown}")
             return False
 
         origin_page = self.current_url
@@ -717,6 +716,7 @@ class BraveBot(webdriver.Chrome):
                     log.info(f"HEALING : {my_item.text}")
                     # check timeout:
                     # if 'Čas do konca' in my_item.text:
+                    sleep(1)
                     cooldowns = self.find_elements(By.ID, "item_cooldown2_2")
                     for cooldown in cooldowns:
                         cooldown_text = re.search('(\d+:\d+:\d+)', cooldown.text)
@@ -724,9 +724,9 @@ class BraveBot(webdriver.Chrome):
                             continue
                         log.warning(f"Healing cooldown...")
                         healing_cooldown = self._parse_time(cooldown_text.group(1))
-                        log.info(f"Remaining time {self.t_delta} "
-                                 f"until {(datetime.datetime.now() + healing_cooldown).strftime('%H:%M:%S')}")
                         self.healing_cooldown = datetime.datetime.now() + healing_cooldown
+                        log.info(f"Remaining time {healing_cooldown} "
+                                 f"until {self.healing_cooldown.strftime('%H:%M:%S')}")
                         # datetime.datetime.now() <= healing_cooldown # we dont need to check healing
                         return False
 
