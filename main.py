@@ -356,6 +356,7 @@ class BraveBot(webdriver.Chrome):
     def do_adventure(self, min_energy=0.35, finish=False):
         log.warning("ADVENTURE".center(50, "-"))
         if finish:
+            self.get(self.URL + "/city/adventure")
             if 'Pokračovať (3 AB)' in self.page_source:
                 log.info(f"low energy {self.energy} we have to end adventure")
                 self.get(self.URL + "/city/adventure/decision/36")
@@ -363,6 +364,8 @@ class BraveBot(webdriver.Chrome):
                 self.adventure_in_progress = False
                 return
             else:
+                self.get(self.URL + "/city/adventure/decision/36")
+                self.get(self.URL + "/city/adventure")
                 log.warning("Set adventure_in_progress to False...")
                 self.adventure_in_progress = False
                 return
