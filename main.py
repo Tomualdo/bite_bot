@@ -181,7 +181,9 @@ class BraveBot(webdriver.Chrome):
             # target = self.find_element(By.XPATH, ".//*[@id='humanHunting']//button[contains(.,'Dedina')]")
             self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             _target.click()
-            log.info(self.find_elements(By.XPATH, f"//p")[-2].text)
+            results = self.find_elements(By.XPATH, f"//p")
+            for result in results:
+                log.info(result.text)
         return True
 
     def select_hunt(self):
