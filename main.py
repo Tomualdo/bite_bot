@@ -352,6 +352,10 @@ class BraveBot(webdriver.Chrome):
                 self.get(self.URL + "/city/adventure")
                 self.adventure_in_progress = False
                 return
+            else:
+                log.warning("Set adventure_in_progress to False...")
+                self.adventure_in_progress = False
+                return
 
         self.get(self.URL + "/city/adventure")
         if self.check_if_work_in_progress():
@@ -1046,6 +1050,12 @@ def main():
                 # ----------------------------------------------------------------------------------------
                 elif choice == 'adventure':
                     log.info("Adventure wos chosen")
+                    if bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE:
+                        pass
+                    else:
+                        if bot.adventure_in_progress:
+                            log.warning("We have active adventure, but it is not possible to continue...")
+                            bot.do_adventure(finish=True)
                     while bot.ap[0] >= 3 and bot.energy > MIN_ENERGY_ADVENTURE:
                         no_action_count = 0
                         log.info(f"bot AP is {bot.ap[0]} >= 3 --- we are going for ADVENTURE")
