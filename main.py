@@ -31,6 +31,11 @@ class BraveBot(webdriver.Chrome):
     players = {}
 
     def __init__(self):
+        self.desired_talents = [
+            'Zdroj života', 'Nával zúrivosti', 'Zúrivý útok', 'Lovec a korisť', 'Rýchly návrat', 'Bezcitnosť',
+            'Jed', 'Poznaj svojho protivníka', 'Desivý úder', 'Smrtiaci vietor', 'Železné zovretie', 'Smrtiaca aura',
+            'Inštinkt lovca', 'Odčerpanie esencie (malé)', 'Bojové reflexy', 'Podoba ducha'
+        ]
         self.healing_cooldown = datetime.datetime.now()
         self.action_focus = []
         self.free_inventory_space = None
@@ -907,13 +912,66 @@ class BraveBot(webdriver.Chrome):
         """
 
     def talents(self):
-        # TODO
         self.get(self.URL + '/profile/talents')
         self.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         self.execute_script("window.scrollTo(document.body.scrollHeight, 0);")
         # get price for point
         # //*[@id="talentsOptions"]/tbody/tr[2]/td[3]/table/tbody/tr[1]/td[3]/text()
         talent_options = self.find_elements(By.XPATH, "//*[@id='talentsOptions']//tbody")
+        """
+        'Tvoje zlato: 173.474   Pekelné kamene: 0\nZobraz filter: 
+        \nVšetky naučené talenty\nNaučiteľné talenty\nVšetky talenty\n                             
+        Voľné body:\n0\nPoužité body:\n11\nMaximálne body:\n13\nĎalšie body\nÚroveň: 64\n+2\n  
+        ďalší bod: 40.131\nVynulovanie ceny v zlate a znovu naučenie všetkých talentov: 19\n
+        Vynulovať všetky body: 500\nVynulovať jeden talent: 2'
+        """
+        if not talent_options:
+            log.error("No talents")
+            return
+        free_points = re.search('Voľné body:\n(\d+)', talent_options[0].text)
+        used_points = re.search('Použité body:\n(\d+)', talent_options[0].text)
+        max_points = re.search('Maximálne body:\n(\d+)', talent_options[0].text)
+        next_level = re.search('Ďalšie body\nÚroveň: (\d+)', talent_options[0].text)
+        next_point_cost = re.search('ďalší bod: ([\d\.]+)', talent_options[0].text)
+
+        if not all([free_points, used_points, max_points, next_point_cost, next_level]):
+            log.error("Not all vars in talents were found")
+            return
+
+        free_points = int(free_points.group(1))
+        used_points = int(used_points.group(1))
+        max_points = int(max_points.group(1))
+        next_level = int(next_level.group(1))
+        next_point_cost = int(next_point_cost.group(1).replace('.', ''))
+
+        if free_points > 0:
+            # select talent
+            talents = self.find_elements(By.XPATH, "//*[@id='specialSkills']//td[@class='talent_buyable']")
+            if not talents:
+                log.error("No talents found")
+                return
+            for talent in talents:
+                if talent.text in self.desired_talents:
+                    log.warning(f"Activating new talent {talent.text}")
+                    talent_href = talent.find_element(By.CLASS_NAME, "buytalent").get_attribute('href')
+                    self.get(talent_href)
+                    return
+            log.warning("No desired talents to activate...")
+            return
+        elif used_points < max_points:
+            # buy talent point
+            if self.gold >= next_point_cost:
+                self.find_element(By.NAME, "buypoint").click()
+                self.talents()
+            else:
+                log.warning(f"Not enough gold for talent point {self.gold} < {next_point_cost}")
+                return
+        elif used_points == max_points:
+            # there is nothing to do, wait for level up
+            log.warning(f"All point were used. additional points will be available at level {next_level}")
+            return
+
+
 
     def get_energy_potion(self):
         #//*[@id="items"]/div[2]/div/div/h2[1]
