@@ -46,7 +46,7 @@ class BraveBot(webdriver.Chrome):
                 'Blarkim', 'Marsil', 'Wayan', 'Ghaif', 'Jadeeye', 'Xanduu', 'Nofor', 'Ghunkhar', 'Yasutsuna', 'Gorgoth',
                 'Darnam', 'Baan', 'Kalima', 'Sosul', 'Erenthight', 'Ybor', 'Eriall', 'Rimdil', 'Hyarspex', 'Anzuur',
                 'Furios', 'Korgan', 'Void', 'Hexxen', 'Nagash', 'Korgan', 'Tabar', 'Chamkaq', 'Nodachi', 'Balbriggan',
-                'Hexxen', 'Yogloth', 'Svinferin', 'Borkaan', 'Anyis', 'Diablis'
+                'Hexxen', 'Yogloth', 'Svinferin', 'Borkaan', 'Anyis', 'Diablis', 'Telgore', 'Telfer', 'Renning'
             })
         self.focused_items = []
         self.exception_items = ['Valon']
@@ -900,11 +900,18 @@ class BraveBot(webdriver.Chrome):
         if 'jaskyni' in overview.text:
             if 'cavern' not in self.action_focus:
                 self.action_focus.append('cavern')
+        if 'v nákladoch za schopnosti' in overview.text:
+            if 'stats' not in self.action_focus:
+                self.action_focus.append('stats')
         # TODO overview tips
         """+50% zlata v jaskyni
         +100% skúsenosti v jaskyni
         +100% volných misií (maximum)
         +50% obnovy energie
+        -----
+        -30% zlata v nákladoch za schopnosti
+        -30% zlata v nákladoch za predmety u obchodníka
+
         """
 
     def talents(self):
@@ -1148,7 +1155,7 @@ def main():
                 log.info(" end loop ".center(100, "-"))
 
             except Exception as e:
-                log.error(f"{e} {traceback.format_exc()}")
+                log.error(f"Error in main loop !\n{e} {traceback.format_exc()}")
                 err_counter += 1
                 if err_counter >= 10:
                     if repeat_flag:
