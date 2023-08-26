@@ -48,7 +48,7 @@ class BraveBot(webdriver.Chrome):
                 'Furios', 'Korgan', 'Void', 'Hexxen', 'Nagash', 'Korgan', 'Tabar', 'Chamkaq', 'Nodachi', 'Balbriggan',
                 'Hexxen', 'Yogloth', 'Svinferin', 'Borkaan', 'Anyis', 'Diablis', 'Telgore', 'Telfer', 'Renning',
                 'Lyx', 'Zombor', 'Sagamal', 'Vardha', 'Kaimaan', 'Sinclair', 'Emon', 'Nihil Ferrox', 'Brodak', 'Krakarot',
-                'Reflec', 'Trollthom',
+                'Reflec', 'Trollthom', 'Sonisha', 'Bergor', 'Urrosh', 'Rig-Myr', 'Firehold', 'Watari', 'Halgar'
             })
         self.focused_items = []
         self.exception_items = ['Valon']
